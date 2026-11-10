@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+use crate::auth;
 use crate::error::AppError;
 use crate::AppState;
 
@@ -53,6 +54,35 @@ async fn dispatch(app: &AppState, command: &str, args: serde_json::Value) -> Opt
 			Ok(a) => fetch_external(app, a).await.map(serde_json::Value::String),
 			Err(e) => Err(e),
 		},
+		// session and sign-in (auth.rs)
+		"current_session" => to_json(auth::current_session(app)),
+		"account_restriction" => to_json(auth::account_restriction(app)),
+		"session_feature_flags" => to_json(auth::session_feature_flags(app)),
+		"storage_backend" => to_json("file"),
+		"sign_in_with_email" => match parse(args) {
+			Ok(a) => auth::sign_in_with_email(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		"refresh_session" => match parse(args) {
+			Ok(a) => auth::refresh_session(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		"sign_out" => auth::sign_out(app).await.and_then(to_json),
+		"rotate_api_params" => auth::rotate_api_params(app).await.and_then(to_json),
+		"recaptcha_first_party_enabled" => auth::recaptcha_first_party_enabled(app).await.and_then(to_json),
+		"mint_recaptcha_token" => Err(auth::mint_recaptcha_token()),
+		"google_handoff_pending" => to_json(false),
+		"set_app_active" => match parse(args) {
+			Ok(a) => auth::set_app_active(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		// Grindr websocket (ws.rs)
+		"ws_connect" => auth::ws_connect(app).await.and_then(to_json),
+		"ws_reconnect" => auth::ws_reconnect(app).await.and_then(to_json),
+		"ws_send" => match parse(args) {
+			Ok(a) => auth::ws_send(app, a).and_then(to_json),
+			Err(e) => Err(e),
+		},
 		"read_app_data" | "write_app_data" | "remove_app_data" => {
 			match parse::<AppDataArgs>(args) {
 				Ok(a) => app_data(app, command, a).await,
@@ -67,7 +97,7 @@ fn parse<T: DeserializeOwned>(args: serde_json::Value) -> Result<T, AppError> {
 	serde_json::from_value(args).map_err(|e| AppError::Http(format!("invalid arguments: {e}")))
 }
 
-fn to_json(value: impl Serialize) -> IpcResult {
+fn to_json<T: Serialize>(value: T) -> IpcResult {
 	serde_json::to_value(value).map_err(|e| AppError::Http(e.to_string()))
 }
 

@@ -8,6 +8,7 @@
 //! - `OG_TRUST_PROXY=1`: take the client IP from `X-Forwarded-For` (behind Caddy)
 //! - `OG_INSECURE_COOKIE=1`: drop the `Secure` cookie flag (local HTTP testing only)
 
+mod auth;
 mod error;
 mod events;
 mod gate;
@@ -38,6 +39,8 @@ pub struct AppState {
 	pub gate: Arc<Gate>,
 	pub index: spa::Index,
 	pub app_data_dir: PathBuf,
+	pub store: SecretStore,
+	pub recovery: Arc<auth::SessionRecovery>,
 }
 
 impl AppState {
@@ -181,6 +184,8 @@ async fn main() -> Result<(), String> {
 
 	let events = EventHub::new();
 	events::forward_client_events(client.clone(), events.clone());
+	let recovery = Arc::new(auth::SessionRecovery::default());
+	auth::watch_auth(client.clone(), store.clone(), events.clone(), recovery.clone());
 
 	let index = spa::Index::load(&static_dir);
 	if !static_dir.join("index.html").exists() {
@@ -195,6 +200,8 @@ async fn main() -> Result<(), String> {
 		gate,
 		index,
 		app_data_dir,
+		store,
+		recovery,
 	};
 
 	let listener = tokio::net::TcpListener::bind(bind)

@@ -40,9 +40,18 @@ impl From<grindr::BanInfo> for BanInfo {
 	}
 }
 
+/// Port of `src-tauri/src/api/recaptcha/error.rs` (only the variant the web
+/// build can produce).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "reason", content = "detail")]
+pub enum RecaptchaError {
+	UnsupportedPlatform,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(tag = "kind", content = "message")]
 pub enum AppError {
+	Recaptcha(RecaptchaError),
 	Http(String),
 	Connect(String),
 	Auth(String),
@@ -88,6 +97,30 @@ impl fmt::Display for AppError {
 			}
 			AppError::NotInitialized => write!(f, "GrindrClient not initialized"),
 			AppError::ContentTooLarge => write!(f, "Larger than the upload limit"),
+			AppError::Recaptcha(_) => write!(f, "reCAPTCHA error: unsupported platform"),
+		}
+	}
+}
+
+impl AppError {
+	pub fn kind(&self) -> &'static str {
+		match self {
+			AppError::Http(_) => "Http",
+			AppError::Connect(_) => "Connect",
+			AppError::Auth(_) => "Auth",
+			AppError::Media(_) => "Media",
+			AppError::NotSignedIn => "NotSignedIn",
+			AppError::SessionStale => "SessionStale",
+			AppError::Api { .. } => "Api",
+			AppError::Unauthorized { .. } => "Unauthorized",
+			AppError::Banned(_) => "Banned",
+			AppError::RateLimited => "RateLimited",
+			AppError::RequestBlocked => "RequestBlocked",
+			AppError::NetworkBlocked => "NetworkBlocked",
+			AppError::NotInitialized => "NotInitialized",
+			AppError::SessionCleared => "SessionCleared",
+			AppError::ContentTooLarge => "ContentTooLarge",
+			AppError::Recaptcha(_) => "Recaptcha",
 		}
 	}
 }

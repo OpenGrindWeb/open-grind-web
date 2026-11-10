@@ -48,7 +48,7 @@ Exclu du MVP (phase ultérieure) :
 
 1. **Fork + squelette serveur** : crate `og-server` (axum) qui réutilise `src-tauri/src/api/*` en extrayant ce qui dépend de `tauri::State` / `AppHandle` derrière un trait. Build statique du front servi par le serveur.
 2. **Bridge front** (fait) : `bridge.js` injecté par le serveur, données d'app (`read/write/remove_app_data`) stockées côté serveur.
-3. **Auth + REST + chat** : porter `auth.rs`, `session_recovery.rs` (`current_session`, `account_restriction`, `sign_in_with_email`, `sign_out`…) et `ws.rs` (`ws_connect`, `ws_send`, `ws_reconnect`). Le MVP fonctionnel en local.
+3. **Auth + REST + chat** (fait, sauf test avec un vrai compte) : porter `auth.rs`, `session_recovery.rs` (`current_session`, `account_restriction`, `sign_in_with_email`, `sign_out`…) et `ws.rs` (`ws_connect`, `ws_send`, `ws_reconnect`). Le MVP fonctionnel en local.
 4. **Médias** : route `/media`, upload signé côté serveur.
 5. **PWA** : manifest, icônes, `apple-mobile-web-app-capable`, safe-area, test sur iPhone.
 6. **Déploiement** : image Docker / egg Pterodactyl, Caddy, sauvegarde du store.

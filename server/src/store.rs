@@ -14,7 +14,6 @@ use serde::Serialize;
 
 pub const DEVICE_INFO: &str = "device-info";
 pub const SESSION: &str = "session";
-#[allow(dead_code)] // used once uploads are ported (phase 4)
 pub const SIGNING_KEY: &str = "device-signing-key";
 
 #[derive(Clone)]
