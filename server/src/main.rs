@@ -12,6 +12,7 @@ mod error;
 mod events;
 mod gate;
 mod ipc;
+mod spa;
 mod store;
 
 use std::net::SocketAddr;
@@ -19,10 +20,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::http::{header, HeaderValue};
-use axum::routing::{get, post};
+use axum::routing::{get, post, MethodRouter};
 use axum::Router;
 use tower_http::compression::CompressionLayer;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use crate::error::AppError;
@@ -35,6 +36,8 @@ pub struct AppState {
 	client: Option<grindr::GrindrClient>,
 	pub events: EventHub,
 	pub gate: Arc<Gate>,
+	pub index: spa::Index,
+	pub app_data_dir: PathBuf,
 }
 
 impl AppState {
@@ -90,16 +93,27 @@ fn persist_session(client: &grindr::GrindrClient, store: SecretStore, mut stored
 }
 
 pub fn router(state: AppState, static_dir: PathBuf) -> Router {
-	let index = static_dir.join("index.html");
-	let spa = ServeDir::new(&static_dir).fallback(ServeFile::new(index));
+	fn spa_index<S: Clone + Send + Sync + 'static>(index: &spa::Index) -> MethodRouter<S> {
+		let index = index.clone();
+		get(move || {
+			let index = index.clone();
+			async move { index.response() }
+		})
+	}
+	let assets = ServeDir::new(&static_dir)
+		.append_index_html_on_directories(false)
+		.fallback(spa_index::<()>(&state.index));
 
 	Router::new()
+		.route("/", spa_index(&state.index))
+		.route("/index.html", spa_index(&state.index))
+		.route("/og-bridge.js", get(spa::bridge))
 		.route("/gate", get(gate::login_page))
 		.route("/gate/login", post(gate::login))
 		.route("/gate/logout", post(gate::logout))
 		.route("/ipc/{command}", post(ipc::handler))
 		.route("/events", get(events::handler))
-		.fallback_service(spa)
+		.fallback_service(assets)
 		.layer(axum::middleware::from_fn_with_state(state.clone(), gate::require_session))
 		.layer(CompressionLayer::new())
 		.layer(SetResponseHeaderLayer::overriding(
@@ -168,15 +182,20 @@ async fn main() -> Result<(), String> {
 	let events = EventHub::new();
 	events::forward_client_events(client.clone(), events.clone());
 
+	let index = spa::Index::load(&static_dir);
+	if !static_dir.join("index.html").exists() {
+		tracing::warn!("[setup] {} has no index.html: build the front first", static_dir.display());
+	}
+	let app_data_dir = data_dir.join("app-data");
+	std::fs::create_dir_all(&app_data_dir).map_err(|e| format!("OG_DATA_DIR: {e}"))?;
+
 	let state = AppState {
 		client: Some(client),
 		events,
 		gate,
+		index,
+		app_data_dir,
 	};
-
-	if !static_dir.join("index.html").exists() {
-		tracing::warn!("[setup] {} has no index.html: build the front first", static_dir.display());
-	}
 
 	let listener = tokio::net::TcpListener::bind(bind)
 		.await

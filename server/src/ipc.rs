@@ -53,6 +53,12 @@ async fn dispatch(app: &AppState, command: &str, args: serde_json::Value) -> Opt
 			Ok(a) => fetch_external(app, a).await.map(serde_json::Value::String),
 			Err(e) => Err(e),
 		},
+		"read_app_data" | "write_app_data" | "remove_app_data" => {
+			match parse::<AppDataArgs>(args) {
+				Ok(a) => app_data(app, command, a).await,
+				Err(e) => Err(e),
+			}
+		}
 		_ => return None,
 	})
 }
@@ -177,9 +183,69 @@ async fn fetch_external(app: &AppState, args: FetchExternalArgs) -> Result<Strin
 	})
 }
 
+// --- Port of src-tauri/src/app_data.rs ---------------------------------------
+
+/// Same closed set of files as `AppDataFile` upstream; the name never reaches
+/// the filesystem unvalidated.
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+enum AppDataFile {
+	Preferences,
+	HondurasHold,
+}
+
+impl AppDataFile {
+	fn file_name(self) -> &'static str {
+		match self {
+			AppDataFile::Preferences => "preferences.data",
+			AppDataFile::HondurasHold => "honduras-hold.data",
+		}
+	}
+}
+
+#[derive(Deserialize)]
+struct AppDataArgs {
+	file: AppDataFile,
+	#[serde(default)]
+	content: Option<String>,
+}
+
+async fn app_data(app: &AppState, command: &str, args: AppDataArgs) -> IpcResult {
+	let path = app.app_data_dir.join(args.file.file_name());
+	let io = |e: std::io::Error| AppError::Http(format!("app data: {e}"));
+	match command {
+		"read_app_data" => match tokio::fs::read(&path).await {
+			Ok(bytes) => to_json(bytes),
+			Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(serde_json::Value::Null),
+			Err(e) => Err(io(e)),
+		},
+		"write_app_data" => {
+			let bytes = STANDARD
+				.decode(args.content.unwrap_or_default())
+				.map_err(|e| AppError::Http(format!("app data: {e}")))?;
+			let tmp = path.with_extension("tmp");
+			tokio::fs::write(&tmp, &bytes).await.map_err(io)?;
+			tokio::fs::rename(&tmp, &path).await.map_err(io)?;
+			Ok(serde_json::Value::Null)
+		}
+		_ => match tokio::fs::remove_file(&path).await {
+			Ok(()) => Ok(serde_json::Value::Null),
+			Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(serde_json::Value::Null),
+			Err(e) => Err(io(e)),
+		},
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn app_data_names_are_a_closed_set() {
+		let ok: AppDataArgs = serde_json::from_value(serde_json::json!({"file": "hondurasHold"})).unwrap();
+		assert_eq!(ok.file.file_name(), "honduras-hold.data");
+		assert!(serde_json::from_value::<AppDataArgs>(serde_json::json!({"file": "../../etc/passwd"})).is_err());
+	}
 
 	#[derive(Serialize)]
 	struct Wire<'a> {

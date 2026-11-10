@@ -21,7 +21,7 @@ og-server (Rust, axum) ── conteneur Pterodactyl
    └─ crate `grindr` + `wreq` (BoringSSL) → API Grindr
 ```
 
-Le front ne change presque pas : on remplace `@tauri-apps/api/core` (`invoke`, `listen`) par un shim HTTP/WebSocket, branché via un alias Vite. `src/lib/api/transport.ts` et `src/lib/ws.svelte.ts` concentrent déjà tout le trafic.
+Le front ne change pas du tout : og-server injecte `server/src/bridge.js` en tête de `index.html`. Ce script définit les globales que lit `@tauri-apps/api` (`__TAURI_INTERNALS__`, `__TAURI_OS_PLUGIN_INTERNALS__` avec la plateforme `ios`, `__TAURI_EVENT_PLUGIN_INTERNALS__`, `isTauri`). Les commandes natives (géoloc, presse-papiers, haptique, updater…) sont traitées dans le navigateur, les événements arrivent par le WebSocket `/events`, et tout le reste part en `POST /ipc/<commande>`. Le build du front reste identique à l'amont, ce qui garde les merges triviaux.
 
 ## Couplage Tauri mesuré
 
@@ -47,8 +47,8 @@ Exclu du MVP (phase ultérieure) :
 ## Phases
 
 1. **Fork + squelette serveur** : crate `og-server` (axum) qui réutilise `src-tauri/src/api/*` en extrayant ce qui dépend de `tauri::State` / `AppHandle` derrière un trait. Build statique du front servi par le serveur.
-2. **Shim front** : alias Vite `@tauri-apps/api/*` → `src/lib/web-shim/*`. `invoke` → `fetch('/ipc/…')`, `listen` → WebSocket `/events`. Stubs inoffensifs pour les plugins (os, clipboard, dialog, opener, geolocation → API web).
-3. **Auth + REST + chat** : le MVP fonctionnel en local.
+2. **Bridge front** (fait) : `bridge.js` injecté par le serveur, données d'app (`read/write/remove_app_data`) stockées côté serveur.
+3. **Auth + REST + chat** : porter `auth.rs`, `session_recovery.rs` (`current_session`, `account_restriction`, `sign_in_with_email`, `sign_out`…) et `ws.rs` (`ws_connect`, `ws_send`, `ws_reconnect`). Le MVP fonctionnel en local.
 4. **Médias** : route `/media`, upload signé côté serveur.
 5. **PWA** : manifest, icônes, `apple-mobile-web-app-capable`, safe-area, test sur iPhone.
 6. **Déploiement** : image Docker / egg Pterodactyl, Caddy, sauvegarde du store.
