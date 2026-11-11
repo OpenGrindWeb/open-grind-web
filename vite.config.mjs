@@ -80,6 +80,13 @@ export default defineConfig(async ({ command }) => ({
 		),
 	},
 
+	// Open Grind Web server installs (OG_WEB_BUILD=1) may run in a container
+	// capped at about 1 GB: skip source maps and the gzip size report, the
+	// two memory-hungry extras of a build.
+	...(process.env.OG_WEB_BUILD === "1"
+		? { build: { sourcemap: false, reportCompressedSize: false } }
+		: {}),
+
 	environments: {
 		client: {
 			build: {

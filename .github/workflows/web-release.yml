@@ -1,0 +1,78 @@
+# Builds Open Grind Web (SvelteKit build + og-server) on every push to main
+# and publishes it as the `web-latest` release, which the Pterodactyl install
+# downloads instead of compiling on the server (no 2-3 GB RAM / 4 GB disk
+# needed there). Built in Debian Bookworm so og-server's glibc matches the
+# yolks:debian runtime image.
+name: Web release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: web-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: rust:1.95-bookworm
+    steps:
+      - name: Tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq --no-install-recommends git cmake clang libclang-dev unzip curl ca-certificates >/dev/null
+          curl -fsSL https://bun.sh/install | bash >/dev/null
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+          git config --global --add safe.directory '*'
+
+      - uses: actions/checkout@v4
+
+      - name: Front
+        env:
+          OG_WEB_BUILD: "1"
+        run: |
+          rm -f rust-toolchain.toml
+          bun install --frozen-lockfile
+          bunx vite build
+
+      - name: Server
+        run: cd server && cargo build --release --locked
+
+      - name: Package
+        run: |
+          mkdir -p dist/open-grind-web
+          cp server/target/release/og-server dist/open-grind-web/
+          cp -r build dist/open-grind-web/build
+          git rev-parse HEAD > dist/open-grind-web/COMMIT
+          tar -C dist -czf open-grind-web-linux-x86_64.tar.gz open-grind-web
+          sha256sum open-grind-web-linux-x86_64.tar.gz > open-grind-web-linux-x86_64.tar.gz.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: open-grind-web-linux-x86_64.tar.gz*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-release
+
+      - name: Publish web-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view web-latest >/dev/null 2>&1 || \
+            gh release create web-latest --title "Open Grind Web (latest build)" \
+              --notes "Built automatically from main. Used by the Pterodactyl install." --latest
+          gh release upload web-latest open-grind-web-linux-x86_64.tar.gz open-grind-web-linux-x86_64.tar.gz.sha256 --clobber
+          gh release edit web-latest --target "${{ github.sha }}" \
+            --notes "Built automatically from main at ${{ github.sha }}. Used by the Pterodactyl install."

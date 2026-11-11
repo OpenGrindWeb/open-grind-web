@@ -44,12 +44,13 @@ function fromDevice(): Locale {
 	return "en";
 }
 
-let current = $state<Locale>(stored() ?? fromDevice());
+const initial: Locale = stored() ?? fromDevice();
+let current = $state<Locale>(initial);
 
 function applyToDocument(locale: Locale) {
 	if (typeof document !== "undefined") document.documentElement.lang = locale;
 }
-applyToDocument(current);
+applyToDocument(initial);
 
 export function locale(): Locale {
 	return current;
