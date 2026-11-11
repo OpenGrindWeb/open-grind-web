@@ -114,10 +114,25 @@ nav[aria-label="Main"] {
 	padding-top: 6px !important;
 }
 
-/* upstream's progressive blur and fade layers give way to the material */
-nav[aria-label="Main"] .pblur-layer,
-nav[aria-label="Main"] [class*="bg-linear-to-t"] {
+/* upstream's progressive (gradient) blur gives way to a uniform material on
+   every screen bar, top and bottom */
+.pblur[data-screen-chrome] > .pblur-bg,
+.pblur[data-screen-chrome] > .pblur-layer,
+.pblur[data-screen-chrome] > .pblur-scrim,
+.pblur[data-fixed-header] > .pblur-bg,
+.pblur[data-fixed-header] > .pblur-layer,
+.pblur[data-fixed-header] > .pblur-scrim {
 	display: none !important;
+}
+
+/* iOS 18 navigation bar: chrome material, hairline at the bottom */
+.pblur[data-screen-chrome="top"],
+.pblur[data-fixed-header]:not([data-screen-chrome="bottom"]) {
+	background-color: var(--mat-chrome) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	box-shadow: inset 0 -0.5px 0 rgb(255 255 255 / 0.15);
+	padding-bottom: 6px;
 }
 
 nav[aria-label="Main"] .links {
