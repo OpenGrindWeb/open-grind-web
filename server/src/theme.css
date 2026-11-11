@@ -1,1 +1,468 @@
-/* Open Grind web theme: filled in below. */
+/*
+ * Open Grind web — iOS 18 materials theme.
+ *
+ * Apple's Liquid Glass is a native system material (UIGlassEffect / the
+ * private -apple-visual-effect property): Safari doesn't expose it to web
+ * pages or home-screen web apps, and backdrop refraction through SVG filters
+ * only works in Chromium. So this theme reproduces the iOS 18 look instead:
+ * the system materials (ultra thin -> thick), system fills, inset grouped
+ * lists, the full-width tab bar and iOS controls.
+ *
+ * Injected last in <head> by og-server on top of the unmodified upstream
+ * build. Unlayered rules win over Tailwind's @layer utilities; only stable
+ * hooks are targeted: tokens, data-slot attributes, ARIA landmarks and
+ * upstream utility names. Nothing here changes behaviour.
+ */
+
+/* ---------------------------------------------------------------- tokens */
+
+html:root {
+	/* iOS dark system colours */
+	--ios-label: #fff;
+	--ios-secondary-label: rgb(235 235 245 / 0.6);
+	--ios-tertiary-label: rgb(235 235 245 / 0.3);
+	--ios-separator: rgb(84 84 88 / 0.65);
+	--ios-fill: rgb(120 120 128 / 0.36);
+	--ios-fill-tertiary: rgb(118 118 128 / 0.24);
+	--ios-bg: #000;
+	--ios-bg-grouped-cell: #1c1c1e;
+	--ios-bg-elevated: #2c2c2e;
+	--ios-tint: #ffd60a; /* Grindr yellow as the app tint */
+	--ios-red: #ff453a;
+	--ios-green: #30d158;
+
+	/* iOS 18 materials (dark): tint over a blurred, saturated backdrop */
+	--mat-ultrathin: rgb(37 37 37 / 0.45);
+	--mat-thin: rgb(37 37 37 / 0.62);
+	--mat-regular: rgb(30 30 30 / 0.72);
+	--mat-chrome: rgb(22 22 22 / 0.78);
+	--mat-thick: rgb(20 20 20 / 0.88);
+	--mat-solid: rgb(28 28 30 / 0.97);
+	--mat-blur: blur(30px) saturate(180%);
+	--mat-blur-light: blur(20px) saturate(170%);
+
+	/* app tokens mapped onto the system colours */
+	--background: var(--ios-bg);
+	--foreground: var(--ios-label);
+	--card: var(--ios-bg-grouped-cell);
+	--card-foreground: var(--ios-label);
+	--popover: var(--ios-bg-elevated);
+	--popover-foreground: var(--ios-label);
+	--secondary: var(--ios-bg-elevated);
+	--secondary-foreground: var(--ios-label);
+	--muted: var(--ios-bg-elevated);
+	--muted-foreground: var(--ios-secondary-label);
+	--border: var(--ios-separator);
+	--input: var(--ios-fill-tertiary);
+	--ring: rgb(255 214 10 / 0.5);
+	--primary: var(--ios-tint);
+	--primary-foreground: #000;
+	--accent: var(--ios-tint);
+	--accent-foreground: #000;
+	--destructive: var(--ios-red);
+
+	--radius: 0.75rem;
+	--radius-grid: 12px;
+
+	--font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Helvetica Neue", sans-serif;
+	--ios-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* The app's own "Backdrop blur" setting keeps working */
+:root[data-backdrop-blur="min"] {
+	--mat-blur: blur(16px) saturate(170%);
+	--mat-blur-light: blur(12px) saturate(160%);
+}
+
+:root[data-backdrop-blur="off"] {
+	--mat-blur: none;
+	--mat-blur-light: none;
+	--mat-ultrathin: var(--mat-solid);
+	--mat-thin: var(--mat-solid);
+	--mat-regular: var(--mat-solid);
+	--mat-chrome: var(--mat-solid);
+	--mat-thick: var(--mat-solid);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+	html:root {
+		--mat-ultrathin: var(--mat-solid);
+		--mat-thin: var(--mat-solid);
+		--mat-regular: var(--mat-solid);
+		--mat-chrome: var(--mat-solid);
+		--mat-thick: var(--mat-solid);
+	}
+}
+
+html,
+body {
+	background: var(--ios-bg);
+	font-family: var(--font-sans);
+	letter-spacing: -0.01em;
+	-webkit-font-smoothing: antialiased;
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* ------------------------------------------------------------- tab bar */
+
+/* iOS 18 tab bar: full width, chrome material, hairline on top */
+nav[aria-label="Main"] {
+	background-color: var(--mat-chrome) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.15);
+	padding-top: 6px !important;
+}
+
+/* upstream's progressive blur and fade layers give way to the material */
+nav[aria-label="Main"] .pblur-layer,
+nav[aria-label="Main"] [class*="bg-linear-to-t"] {
+	display: none !important;
+}
+
+nav[aria-label="Main"] .links {
+	background: transparent !important;
+	box-shadow: none !important;
+	border: none !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+	height: 50px !important;
+	padding: 0 !important;
+	flex: 1 1 auto;
+	max-width: 420px;
+}
+
+nav[aria-label="Main"] .links > a {
+	background: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	border-radius: 10px !important;
+	color: rgb(153 153 153) !important;
+	font-size: 10px !important;
+	font-weight: 500 !important;
+	letter-spacing: 0.01em;
+	gap: 3px !important;
+	transition: color 0.2s var(--ios-ease), opacity 0.15s var(--ios-ease) !important;
+}
+
+nav[aria-label="Main"] .links > a > svg {
+	width: 25px !important;
+	height: 25px !important;
+}
+
+nav[aria-label="Main"] .links > a[data-active="true"] {
+	color: var(--ios-tint) !important;
+}
+
+nav[aria-label="Main"] .links > a:active {
+	opacity: 0.55;
+}
+
+nav[aria-label="Main"] a[aria-label="Me"] {
+	width: 44px !important;
+	height: 44px !important;
+	padding: 2px !important;
+	align-self: center;
+	background: transparent !important;
+	border-width: 1.5px !important;
+	box-shadow: none !important;
+}
+
+nav[aria-label="Main"] [data-slot="badge"] {
+	background: var(--ios-red) !important;
+	box-shadow: none !important;
+}
+
+/* ------------------------------------------------------------- buttons */
+
+[data-slot="button"] {
+	transition:
+		opacity 0.15s var(--ios-ease),
+		background-color 0.2s var(--ios-ease) !important;
+}
+
+[data-slot="button"]:active:not(:disabled) {
+	opacity: 0.6;
+}
+
+/* Filled (prominent) buttons */
+[data-slot="button"].bg-primary {
+	background: var(--ios-tint) !important;
+	color: #000 !important;
+	font-weight: 600 !important;
+	box-shadow: none !important;
+}
+
+/* Capsule chips floating over content (Browse / Right Now filters, round
+   icon buttons): thin material, like iOS 18 floating controls */
+[data-slot="button"].rounded-4xl:not(.bg-primary) {
+	background-color: var(--mat-thin) !important;
+	-webkit-backdrop-filter: var(--mat-blur-light);
+	backdrop-filter: var(--mat-blur-light);
+	border-color: transparent !important;
+	box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.1) !important;
+	color: var(--ios-label) !important;
+	font-weight: 600;
+}
+
+/* Selected chip: tinted fill */
+[data-slot="button"].rounded-4xl[data-active="true"],
+[data-slot="button"].rounded-4xl[aria-pressed="true"],
+[data-slot="button"].rounded-4xl[data-state="on"] {
+	background-color: var(--ios-tint) !important;
+	color: #000 !important;
+	box-shadow: none !important;
+}
+
+/* Right Now "Join": prominent capsule with a soft lift */
+[data-slot="join-button"] [data-slot="button"] {
+	background: var(--ios-tint) !important;
+	color: #000 !important;
+	font-weight: 600 !important;
+	box-shadow: 0 6px 18px rgb(0 0 0 / 0.45) !important;
+}
+
+/* Upstream glass utilities (photo overlays, floating chips) */
+.floating-chip,
+.media-chip,
+.media-pill {
+	background-color: var(--mat-ultrathin) !important;
+	-webkit-backdrop-filter: var(--mat-blur-light) !important;
+	backdrop-filter: var(--mat-blur-light) !important;
+	border-color: rgb(255 255 255 / 0.08) !important;
+}
+
+.media-disc {
+	background-color: var(--mat-thin) !important;
+	-webkit-backdrop-filter: var(--mat-blur-light) !important;
+	backdrop-filter: var(--mat-blur-light) !important;
+}
+
+/* Name labels over grid photos: ultra thin material capsules */
+[data-slot="badge"]:not(nav [data-slot="badge"]) {
+	background-color: var(--mat-ultrathin) !important;
+	-webkit-backdrop-filter: blur(12px) saturate(170%);
+	backdrop-filter: blur(12px) saturate(170%);
+	border-color: transparent !important;
+	color: var(--ios-label) !important;
+}
+
+/* ---------------------------------------------------- segmented control */
+
+[data-slot="toggle-group"] {
+	padding: 2px;
+	gap: 0 !important;
+	border-radius: 9px !important;
+	background: var(--ios-fill-tertiary) !important;
+	box-shadow: none !important;
+}
+
+[data-slot="toggle-group-item"] {
+	border-radius: 7px !important;
+	background: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	color: var(--ios-label) !important;
+	font-size: 13px !important;
+	font-weight: 500 !important;
+	transition: background-color 0.2s var(--ios-ease) !important;
+}
+
+[data-slot="toggle-group-item"][data-state="on"] {
+	background: #636366 !important;
+	font-weight: 600 !important;
+	box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04) !important;
+}
+
+/* ------------------------------------------------------ sheets & menus */
+
+[data-slot="drawer-content"],
+[data-slot="sheet-content"] {
+	background-color: var(--mat-thick) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+}
+
+[data-slot="drawer-content"],
+[data-slot="sheet-content"][data-side="bottom"] {
+	border-top-left-radius: 12px !important;
+	border-top-right-radius: 12px !important;
+}
+
+[data-slot="drawer-handle"] {
+	width: 36px !important;
+	height: 5px !important;
+	border-radius: 3px !important;
+	background: rgb(127 127 127 / 0.5) !important;
+}
+
+/* Alerts */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+	background-color: var(--mat-thick) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	border: none !important;
+	border-radius: 14px !important;
+	box-shadow: none !important;
+}
+
+/* Context menus, popovers, selects: regular material, 13pt corners */
+[data-slot="popover-content"],
+[data-slot="dropdown-menu-content"],
+[data-slot="context-menu-content"],
+[data-slot="select-content"],
+[data-slot="hover-card-content"],
+[data-slot="command"] {
+	background-color: var(--mat-regular) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	border: none !important;
+	border-radius: 13px !important;
+	box-shadow: 0 10px 40px rgb(0 0 0 / 0.5) !important;
+}
+
+[data-slot="dropdown-menu-separator"],
+[data-slot="context-menu-separator"] {
+	background: var(--ios-separator) !important;
+}
+
+/* Dim behind modals, as iOS does */
+[data-slot="drawer-overlay"],
+[data-slot="sheet-overlay"],
+[data-slot="dialog-overlay"],
+[data-slot="alert-dialog-overlay"] {
+	background: rgb(0 0 0 / 0.4) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+}
+
+/* Toasts: banner on regular material */
+[data-sonner-toast] {
+	background-color: var(--mat-regular) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	border: none !important;
+	border-radius: 14px !important;
+	color: var(--ios-label) !important;
+	box-shadow: 0 8px 30px rgb(0 0 0 / 0.4) !important;
+}
+
+/* ------------------------------------------------------ lists & content */
+
+/* Inset grouped cells (conversations, settings) */
+[data-slot="item"] {
+	border-color: transparent !important;
+	background: var(--ios-bg-grouped-cell);
+	border-radius: 10px !important;
+	box-shadow: none !important;
+	transition: background-color 0.15s var(--ios-ease);
+}
+
+[data-slot="item"]:active {
+	background: #3a3a3c;
+}
+
+[data-slot="card"] {
+	background: var(--ios-bg-grouped-cell) !important;
+	border: none !important;
+	border-radius: 10px !important;
+	box-shadow: none !important;
+}
+
+[data-slot="separator"] {
+	background: var(--ios-separator) !important;
+}
+
+/* Right Now posts: plain list with hairlines, rounded photos */
+[data-slot="right-now-post"] {
+	position: relative;
+}
+
+[data-slot="right-now-post"] + [data-slot="right-now-post"]::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 64px;
+	right: 0;
+	height: 0.5px;
+	background: var(--ios-separator);
+}
+
+[data-slot="right-now-post-photo"],
+[data-slot="right-now-post-photo"] img {
+	border-radius: 12px !important;
+}
+
+/* Text fields: filled, borderless */
+[data-slot="input"],
+[data-slot="textarea"],
+[data-slot="select-trigger"] {
+	background: var(--ios-fill-tertiary) !important;
+	border-color: transparent !important;
+	border-radius: 10px !important;
+	box-shadow: none !important;
+	font-size: 17px;
+}
+
+[data-slot="input"]::placeholder,
+[data-slot="textarea"]::placeholder {
+	color: var(--ios-tertiary-label);
+}
+
+[data-slot="input"]:focus-visible,
+[data-slot="textarea"]:focus-visible {
+	box-shadow: none !important;
+	outline: none !important;
+}
+
+/* Switches: iOS green track, white knob */
+[data-slot="switch"] {
+	min-width: 51px;
+	min-height: 31px;
+	border: none !important;
+}
+
+[data-slot="switch"][data-state="unchecked"] {
+	background: var(--ios-fill) !important;
+}
+
+[data-slot="switch"][data-state="checked"] {
+	background: var(--ios-green) !important;
+}
+
+[data-slot="switch-thumb"] {
+	background: #fff !important;
+	box-shadow: 0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06) !important;
+}
+
+/* Sliders: system track, white knob */
+[data-slot="slider-track"] {
+	background: var(--ios-fill) !important;
+}
+
+[data-slot="slider-range"] {
+	background: var(--ios-tint) !important;
+}
+
+[data-slot="slider-thumb"] {
+	background: #fff !important;
+	border: none !important;
+	box-shadow: 0 0.5px 4px rgb(0 0 0 / 0.12), 0 6px 13px rgb(0 0 0 / 0.12) !important;
+}
+
+[data-slot="avatar"] {
+	box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.1);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@media (prefers-reduced-motion: reduce) {
+	[data-slot="button"],
+	[data-slot="item"],
+	nav[aria-label="Main"] .links > a {
+		transition: none !important;
+	}
+}
