@@ -31,3 +31,11 @@ export function isLinuxPlatform(): boolean {
 export function isMacosPlatform(): boolean {
 	return isTauri() && platform() === "macos";
 }
+
+/** Served by og-server as a web app (its bridge stands in for Tauri). */
+export function isWebBuild(): boolean {
+	return (
+		typeof window !== "undefined" &&
+		(window as { __OG_WEB__?: boolean }).__OG_WEB__ === true
+	);
+}

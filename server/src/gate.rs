@@ -24,6 +24,7 @@ use base64::Engine as _;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+use crate::totp::{Totp, Verdict};
 use crate::AppState;
 
 pub const COOKIE: &str = "og_session";
@@ -37,7 +38,10 @@ pub const IPC_HEADER: &str = "x-og-ipc";
 const LOGIN_PAGE: &str = include_str!("gate.html");
 
 pub struct GateConfig {
-	pub password_hash: String,
+	/// argon2 PHC hash; `None` when only codes are allowed.
+	pub password_hash: Option<String>,
+	/// Authenticator codes (TOTP), accepted instead of the password.
+	pub totp: Option<Totp>,
 	pub secure_cookie: bool,
 	pub trust_proxy: bool,
 }
@@ -68,8 +72,13 @@ fn now_unix() -> u64 {
 
 impl Gate {
 	pub fn new(config: GateConfig, sessions_file: Option<PathBuf>) -> Result<Arc<Self>, String> {
-		PasswordHash::new(&config.password_hash)
-			.map_err(|e| format!("OG_PASSWORD_HASH is not a valid PHC hash: {e}"))?;
+		if let Some(hash) = &config.password_hash {
+			PasswordHash::new(hash)
+				.map_err(|e| format!("OG_PASSWORD_HASH is not a valid PHC hash: {e}"))?;
+		}
+		if config.password_hash.is_none() && config.totp.is_none() {
+			return Err("set OG_PASSWORD_HASH, OG_TOTP_SECRET or both".into());
+		}
 		let sessions = sessions_file.as_deref().map(load_sessions).unwrap_or_default();
 		Ok(Arc::new(Self {
 			config,
@@ -211,8 +220,14 @@ fn session_cookie(headers: &HeaderMap) -> Option<&str> {
 		.map(|(_, value)| value)
 }
 
-pub async fn login_page() -> Html<&'static str> {
-	Html(LOGIN_PAGE)
+pub async fn login_page(State(app): State<AppState>) -> Html<String> {
+	let config = &app.gate.config;
+	let modes = match (config.totp.is_some(), config.password_hash.is_some()) {
+		(true, true) => "both",
+		(true, false) => "code",
+		_ => "password",
+	};
+	Html(LOGIN_PAGE.replace("{{MODES}}", modes))
 }
 
 #[derive(Deserialize)]
@@ -232,15 +247,29 @@ pub async fn login(
 		return Redirect::to("/gate?locked=1").into_response();
 	}
 
-	let hash = gate.config.password_hash.clone();
-	let ok = tokio::task::spawn_blocking(move || {
-		let parsed = PasswordHash::new(&hash).expect("validated at startup");
-		Argon2::default()
-			.verify_password(form.password.as_bytes(), &parsed)
-			.is_ok()
-	})
-	.await
-	.unwrap_or(false);
+	// A 6-digit entry is an authenticator code when codes are enabled;
+	// anything else is the password.
+	let ok = match &gate.config.totp {
+		Some(totp) if Totp::looks_like_code(&form.password) => match totp.verify(&form.password) {
+			Verdict::Accepted => true,
+			Verdict::Rejected => false,
+			Verdict::Paused => {
+				tracing::warn!("[gate] code logins paused: too many failed codes this hour");
+				return Redirect::to("/gate?paused=1").into_response();
+			}
+		},
+		_ => match gate.config.password_hash.clone() {
+			Some(hash) => tokio::task::spawn_blocking(move || {
+				let parsed = PasswordHash::new(&hash).expect("validated at startup");
+				Argon2::default()
+					.verify_password(form.password.as_bytes(), &parsed)
+					.is_ok()
+			})
+			.await
+			.unwrap_or(false),
+			None => false,
+		},
+	};
 
 	gate.record(ip, ok);
 	if !ok {
@@ -313,7 +342,8 @@ mod tests {
 			.to_string();
 		Gate::new(
 			GateConfig {
-				password_hash: hash,
+				password_hash: Some(hash),
+				totp: None,
 				secure_cookie: true,
 				trust_proxy: true,
 			},
@@ -328,6 +358,7 @@ mod tests {
 		let hash = gate().config.password_hash.clone();
 		let config = || GateConfig {
 			password_hash: hash.clone(),
+			totp: None,
 			secure_cookie: true,
 			trust_proxy: false,
 		};

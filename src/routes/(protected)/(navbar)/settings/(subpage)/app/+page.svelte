@@ -9,6 +9,7 @@
 	import * as Item from "#lib/components/ui/item/index.ts";
 	import Link from "#lib/components/ui/link/Link.svelte";
 	import { hapticsAvailable } from "#lib/haptics.ts";
+	import { isWebBuild } from "#lib/platform/os.ts";
 	import { desktopEntryAvailable } from "#lib/platform/desktop-entry.svelte.ts";
 	import { addonInstallerAvailable } from "#lib/updates/addon.svelte.ts";
 	import {
@@ -105,12 +106,17 @@
 	title="GIF search via GIPHY"
 	description="Search and load GIFs from GIPHY in chats. GIPHY sees your IP address, what you search for and that the requests come from a Grindr app."
 />
-<h2>Security</h2>
-{@render item({
-	title: "Discreet app icon",
-	unimplemented: { feature: "Discreet app icon", issue: 97 },
-})}
-{@render item({ title: "PIN", unimplemented: { feature: "PIN", issue: 50 } })}
+<!-- Neither can exist in a home-screen web app (iOS fixes its icon at install,
+     and the server's access gate already guards it), so the web build drops
+     these placeholders. -->
+{#if !isWebBuild()}
+	<h2>Security</h2>
+	{@render item({
+		title: "Discreet app icon",
+		unimplemented: { feature: "Discreet app icon", issue: 97 },
+	})}
+	{@render item({ title: "PIN", unimplemented: { feature: "PIN", issue: 50 } })}
+{/if}
 {#if updatesSelfManaged() || updatesUnsupportedReason() !== null || addonInstallerAvailable()}
 	<h2>Updates</h2>
 	<AutomaticUpdatesSetting />

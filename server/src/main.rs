@@ -1,7 +1,10 @@
 //! og-server: self-hosted web backend for Open Grind.
 //!
 //! Configuration (environment):
-//! - `OG_PASSWORD_HASH` (required): argon2 PHC hash, from `og-server hash-password`
+//! - `OG_PASSWORD_HASH`: argon2 PHC hash, from `og-server hash-password`
+//! - `OG_TOTP_SECRET`: base32 authenticator secret, from `og-server totp-setup`;
+//!   lets a 6-digit code open the gate instead of the password
+//!   (at least one of the two is required)
 //! - `OG_BIND`: listen address, default `127.0.0.1:8080`
 //! - `OG_STATIC_DIR`: SvelteKit build, default `./build`
 //! - `OG_DATA_DIR`: device identity and session, default `./data`
@@ -18,6 +21,7 @@ mod photo;
 mod pwa;
 mod spa;
 mod store;
+mod totp;
 mod upload;
 
 // Compiled unchanged from the upstream Tauri tree.
@@ -79,6 +83,24 @@ fn hash_password() -> Result<(), String> {
 		.hash_password(password.as_bytes(), &salt)
 		.map_err(|e| e.to_string())?;
 	println!("{hash}");
+	Ok(())
+}
+
+/// Prints a new TOTP secret with its QR code, to scan in an authenticator
+/// app (iOS Passwords, Google Authenticator, ...), then set OG_TOTP_SECRET.
+fn totp_setup() -> Result<(), String> {
+	let secret = totp::Totp::generate_secret();
+	let uri = totp::Totp::provisioning_uri(&secret, "server");
+	println!("{}", totp::qr_for_terminal(&uri)?);
+	println!("Scan the QR code with your authenticator app, or enter this key:");
+	println!();
+	println!("    {secret}");
+	println!();
+	println!("Then start og-server with:");
+	println!();
+	println!("    OG_TOTP_SECRET={secret}");
+	println!();
+	println!("Keep it secret: anyone with it can open the gate.");
 	Ok(())
 }
 
@@ -197,12 +219,17 @@ async fn main() -> Result<(), String> {
 		)
 		.init();
 
-	if std::env::args().nth(1).as_deref() == Some("hash-password") {
-		return hash_password();
+	match std::env::args().nth(1).as_deref() {
+		Some("hash-password") => return hash_password(),
+		Some("totp-setup") => return totp_setup(),
+		_ => {}
 	}
 
-	let password_hash = std::env::var("OG_PASSWORD_HASH")
-		.map_err(|_| "OG_PASSWORD_HASH is required (generate it with `og-server hash-password`)")?;
+	let password_hash = std::env::var("OG_PASSWORD_HASH").ok().filter(|v| !v.is_empty());
+	let totp = match std::env::var("OG_TOTP_SECRET").ok().filter(|v| !v.is_empty()) {
+		Some(secret) => Some(totp::Totp::from_base32(&secret)?),
+		None => None,
+	};
 	let bind: SocketAddr = std::env::var("OG_BIND")
 		.unwrap_or_else(|_| "127.0.0.1:8080".into())
 		.parse()
@@ -214,6 +241,7 @@ async fn main() -> Result<(), String> {
 	let gate = Gate::new(
 		GateConfig {
 			password_hash,
+			totp,
 			secure_cookie: !env_flag("OG_INSECURE_COOKIE"),
 			trust_proxy: env_flag("OG_TRUST_PROXY"),
 		},

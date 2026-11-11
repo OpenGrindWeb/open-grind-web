@@ -25,20 +25,58 @@
 	input { background: transparent; color: inherit; }
 	button { background: var(--accent); color: #111; border: 0; font-weight: 600; }
 	.msg { font-size: 14px; color: var(--err); min-height: 1em; margin: 0; }
+	#field[inputmode="numeric"] { font-size: 22px; letter-spacing: 0.3em; text-align: center; }
+	button.link { background: none; color: var(--muted); padding: 4px; font-weight: 500; font-size: 14px; }
 </style>
 </head>
-<body>
+<body data-modes="{{MODES}}">
 <form method="post" action="/gate/login">
 	<h1>Open Grind</h1>
-	<input type="password" name="password" autocomplete="current-password" placeholder="Mot de passe du serveur" required autofocus>
+	<input id="field" name="password" required autofocus>
 	<button type="submit">Entrer</button>
+	<button type="button" id="switch" class="link" hidden></button>
 	<p class="msg" id="msg"></p>
 </form>
 <script>
+	// "code": authenticator code only; "password": password only; "both".
+	const modes = document.body.dataset.modes;
+	const field = document.getElementById("field");
+	const switcher = document.getElementById("switch");
+	let usingCode = modes !== "password";
+
+	function show() {
+		if (usingCode) {
+			field.type = "text";
+			field.inputMode = "numeric";
+			field.autocomplete = "one-time-code";
+			field.pattern = "[0-9 ]{6,7}";
+			field.maxLength = 7;
+			field.placeholder = "Code à 6 chiffres";
+			switcher.textContent = "Utiliser le mot de passe";
+		} else {
+			field.type = "password";
+			field.inputMode = "text";
+			field.autocomplete = "current-password";
+			field.removeAttribute("pattern");
+			field.removeAttribute("maxlength");
+			field.placeholder = "Mot de passe du serveur";
+			switcher.textContent = "Utiliser un code";
+		}
+		switcher.hidden = modes !== "both";
+	}
+	switcher.addEventListener("click", () => {
+		usingCode = !usingCode;
+		field.value = "";
+		show();
+		field.focus();
+	});
+	show();
+
 	const q = new URLSearchParams(location.search);
 	const msg = document.getElementById("msg");
 	if (q.has("locked")) msg.textContent = "Trop d'essais. Réessaie dans 15 minutes.";
-	else if (q.has("failed")) msg.textContent = "Mot de passe incorrect.";
+	else if (q.has("paused")) msg.textContent = "Trop de codes faux cette heure-ci : utilise le mot de passe ou réessaie plus tard.";
+	else if (q.has("failed")) msg.textContent = usingCode ? "Code incorrect ou déjà utilisé." : "Mot de passe incorrect.";
 </script>
 </body>
 </html>
