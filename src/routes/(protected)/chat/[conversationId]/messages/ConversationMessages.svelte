@@ -10,6 +10,10 @@
 	import ConversationError from "./ConversationError.svelte";
 	import ConversationPaginationSentinel from "./ConversationPaginationSentinel.svelte";
 	import MessagesList from "./MessagesList.svelte";
+	import {
+		attachConversationPhotoGallery,
+		setConversationPhotoGallery,
+	} from "./message/message-lightbox";
 	import MessagesListSkeleton from "./MessagesListSkeleton.svelte";
 	import ScrollToBottomButton from "./ScrollToBottomButton.svelte";
 
@@ -18,6 +22,13 @@
 	const conversationState = $derived(getConversationState()());
 
 	let container: HTMLDivElement | null = $state(null);
+
+	// One lightbox over all the conversation's photos: swipe between them.
+	setConversationPhotoGallery(true);
+	$effect(() => {
+		if (!container) return;
+		return attachConversationPhotoGallery({ gallery: container });
+	});
 	let refreshControl: DataRefreshControl | undefined = $state();
 
 	const FLOOR_SLOP_PX = 16;

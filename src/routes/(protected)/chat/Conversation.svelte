@@ -38,6 +38,11 @@
 	const preview = $derived(conversation.data.preview);
 	const participant = $derived(conversation.data.participants[0]);
 	const previewText = $derived(previewLabel(preview));
+	// The last message is ours: prefix it, like most messengers do.
+	const previewIsOurs = $derived(
+		preview?.senderId != null &&
+			preview.senderId === conversations.ourProfileId,
+	);
 	const conversationId = $derived(conversation.data.conversationId);
 	const draft = $derived(conversations.drafts.get(conversationId));
 
@@ -102,7 +107,7 @@
 		{#snippet description()}
 			<Item.Description
 				class={[
-					"line-clamp-2 text-[15px] leading-snug wrap-anywhere",
+					"line-clamp-2 text-[14px] leading-snug wrap-anywhere",
 					{
 						"font-medium text-white":
 							draft === "" &&
@@ -117,7 +122,12 @@
 						class="font-bold text-primary">Draft:&nbsp;</span
 					>{draft}
 				{:else if previewText !== null}
-					{previewText}
+					{#if previewIsOurs}
+						<span
+							data-slot="conversation-preview-ours"
+							class="font-normal text-muted-foreground">You:&nbsp;</span
+						>
+					{/if}{previewText}
 				{:else}
 					<span
 						class="font-normal tracking-tight text-muted-foreground italic"
@@ -132,7 +142,7 @@
 				class="flex min-w-0 flex-col items-end gap-1.5 self-start pt-0.5"
 			>
 				<span
-					class="flex max-w-full items-center gap-1 text-[15px] text-muted-foreground"
+					class="flex max-w-full items-center gap-1 text-[13px] text-muted-foreground"
 				>
 					{#if conversation.data.pinned}
 						<PushPinIcon weight="fill" class="size-4 shrink-0" />

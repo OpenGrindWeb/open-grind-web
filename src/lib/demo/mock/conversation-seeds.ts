@@ -151,6 +151,7 @@ export const demoConversationSeeds: DemoConversation[] = [
 			{ fromMe: true, text: "Duis aute irure dolor." },
 			{ fromMe: false, kind: "expiringImage" },
 			{ fromMe: false, kind: "image" },
+			{ fromMe: true, kind: "image" },
 			{ fromMe: false, text: "🐻 lorem ipsum", reactions: 2 },
 		],
 	},

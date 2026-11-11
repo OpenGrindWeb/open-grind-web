@@ -51,10 +51,10 @@
      starts where the text does (inset separator), trailing accessories. -->
 {#snippet avatarNode()}
 	<Item.Media class="relative translate-y-0! py-2.5 ps-4 pe-3">
-		<Avatar.Root class="size-14 after:rounded-full">
+		<Avatar.Root class="size-13 after:rounded-full">
 			<UserAvatar
 				mediaHash={avatar.mediaHash}
-				class="size-14 rounded-full bg-neutral-700 *:rounded-full"
+				class="size-13 rounded-full bg-neutral-700 *:rounded-full"
 			/>
 		</Avatar.Root>
 		{@render avatar.overlay?.()}
@@ -65,7 +65,7 @@
 		<Item.Content class="min-w-0 flex-1 gap-0.5">
 			<Item.Title
 				class={[
-					"flex w-auto min-w-0 items-center gap-1 truncate text-[17px] leading-tight font-semibold tracking-[-0.02em]",
+					"flex w-auto min-w-0 items-center gap-1 truncate text-[16px] leading-tight font-semibold tracking-[-0.01em]",
 					{ "text-muted-foreground": !title.value },
 				]}
 			>

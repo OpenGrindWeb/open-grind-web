@@ -44,6 +44,12 @@
 	} from "#lib/util/screen-chrome.svelte.ts";
 
 	onMount(() => {
+		// The first screen is up: fade out app.html's boot spinner.
+		const boot = document.getElementById("app-boot");
+		if (boot) {
+			boot.classList.add("app-boot-done");
+			setTimeout(() => boot.remove(), 300);
+		}
 		installScrollGestureBridge();
 		if (PUBLIC_TEST_INSETS) {
 			window.__AndroidInsets = {

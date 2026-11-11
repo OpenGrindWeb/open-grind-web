@@ -22,7 +22,7 @@
 <div
 	data-slot="message-bubble"
 	class={[
-		"relative w-fit max-w-100 shrink-0 overflow-visible rounded-[18px] px-3.5 py-[7px] text-[17px] leading-[22px] tracking-[-0.02em] select-text",
+		"relative w-fit max-w-100 shrink-0 overflow-visible rounded-[18px] px-3 py-1.5 text-[16px] leading-[21px] tracking-[-0.01em] select-text",
 		{
 			"pointer-coarse:select-none": !clone,
 			"rounded-es-none": lastInStack && !isOut,

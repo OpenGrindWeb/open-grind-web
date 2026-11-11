@@ -1,5 +1,6 @@
 import "./message-lightbox.css";
 
+import { createContext } from "svelte";
 import type PhotoSwipeLightbox from "photoswipe/lightbox";
 
 import {
@@ -74,15 +75,35 @@ function scaleThumbSize({
 	}));
 }
 
+/** The current slide's own thumb, for a gallery spanning many messages. */
+function setSlideThumbVisibility({
+	lightbox,
+	visibility,
+}: {
+	lightbox: PhotoSwipeLightbox;
+	visibility: "hidden" | "visible";
+}) {
+	const element = lightbox.pswp?.currSlide?.data.element;
+	if (element instanceof HTMLElement) element.style.visibility = visibility;
+}
+
 function configure({
 	lightbox,
 	gallery,
 	thumbScale,
+	spansMessages = false,
 }: {
 	lightbox: PhotoSwipeLightbox;
 	gallery: HTMLElement;
 	thumbScale: number;
+	spansMessages?: boolean;
 }) {
+	// A gallery over the whole conversation only hides the thumb the
+	// opening/closing animation flies to; hiding them all would blank the chat.
+	const hideThumbs = () =>
+		spansMessages
+			? setSlideThumbVisibility({ lightbox, visibility: "hidden" })
+			: setThumbsVisibility({ gallery, visibility: "hidden" });
 	applyPhotoSwipeErrorUi(lightbox);
 	applyPhotoSwipeThumbDimensions(lightbox);
 	if (thumbScale !== 1) scaleThumbSize({ lightbox, thumbScale });
@@ -92,7 +113,7 @@ function configure({
 	lightbox.on("openingAnimationStart", () => {
 		setThumbRadii(lightbox);
 		lightbox.pswp?.element?.classList.add("pswp--radius-opening");
-		setThumbsVisibility({ gallery, visibility: "hidden" });
+		hideThumbs();
 	});
 	lightbox.on("openingAnimationEnd", () => {
 		lightbox.pswp?.element?.classList.remove("pswp--radius-opening");
@@ -101,12 +122,42 @@ function configure({
 	lightbox.on("closingAnimationStart", () => {
 		setThumbRadii(lightbox);
 		lightbox.pswp?.element?.classList.add("pswp--radius-closing");
-		setThumbsVisibility({ gallery, visibility: "hidden" });
+		hideThumbs();
 	});
 	lightbox.on("closingAnimationEnd", clearThumbRadii);
+	if (spansMessages) {
+		// the thumb hidden for the opening is the slide we started on
+		lightbox.on("change", () =>
+			setThumbsVisibility({ gallery, visibility: "visible" }),
+		);
+	}
 	lightbox.on("destroy", () =>
 		setThumbsVisibility({ gallery, visibility: "visible" }),
 	);
+}
+
+/**
+ * Set by a conversation that shows its photos in one lightbox, so a photo
+ * opens among all the others and swipes to them (like the official app)
+ * instead of each message opening a lightbox of its own.
+ */
+export const [hasConversationPhotoGallery, setConversationPhotoGallery] =
+	createContext<boolean>();
+
+export const CONVERSATION_PHOTO = "a[data-conversation-photo][href]";
+
+/** One lightbox over every photo message in a conversation, in order. */
+export function attachConversationPhotoGallery({
+	gallery,
+}: {
+	gallery: HTMLElement;
+}): () => void {
+	return attachLightbox({
+		gallery,
+		children: CONVERSATION_PHOTO,
+		thumbScale: 1,
+		spansMessages: true,
+	});
 }
 
 export function attachGalleryLightbox({
@@ -116,6 +167,20 @@ export function attachGalleryLightbox({
 	gallery: HTMLElement;
 	thumbScale?: number;
 }): () => void {
+	return attachLightbox({ gallery, children: "a[href]", thumbScale });
+}
+
+function attachLightbox({
+	gallery,
+	children,
+	thumbScale,
+	spansMessages = false,
+}: {
+	gallery: HTMLElement;
+	children: string;
+	thumbScale: number;
+	spansMessages?: boolean;
+}): () => void {
 	let disposed = false;
 	let lightbox: PhotoSwipeLightbox | undefined;
 	import("photoswipe/lightbox")
@@ -123,14 +188,14 @@ export function attachGalleryLightbox({
 			if (disposed) return;
 			lightbox = new PhotoSwipeLightbox({
 				gallery,
-				children: "a[href]",
+				children,
 				pswpModule: () => import("photoswipe"),
 				mainClass: "pswp--buttons-visible",
 				showAnimationDuration: 500,
 				hideAnimationDuration: 500,
 				closeSVG: CLOSE_SVG,
 			});
-			configure({ lightbox, gallery, thumbScale });
+			configure({ lightbox, gallery, thumbScale, spansMessages });
 			lightbox.init();
 		})
 		.catch((error) => console.error(error));

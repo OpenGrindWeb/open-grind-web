@@ -4,7 +4,10 @@
 	import { stableSignedUrl } from "#lib/util/signed-url.ts";
 	import type { ImageMessage } from "#lib/model/messaging/messages.ts";
 	import { mediaRenewal } from "./media-renewal";
-	import { attachGalleryLightbox } from "./message-lightbox";
+	import {
+		attachGalleryLightbox,
+		hasConversationPhotoGallery,
+	} from "./message-lightbox";
 	import { MeasuredSize, MessageMediaState } from "./message-media.svelte";
 
 	let { message }: { message: ImageMessage["body"] } = $props();
@@ -27,9 +30,19 @@
 		ratioAllowsZero: true,
 	});
 
+	// Inside a conversation, its shared gallery opens this photo among the
+	// others; on its own, the message keeps a lightbox of its own.
+	const shared = (() => {
+		try {
+			return hasConversationPhotoGallery();
+		} catch {
+			return false;
+		}
+	})();
+
 	$effect(() => {
 		const gallery = media.el;
-		if (!gallery) return;
+		if (!gallery || shared) return;
 		return attachGalleryLightbox({ gallery });
 	});
 </script>
@@ -41,6 +54,7 @@
 		data-pswp-width={size.width ?? undefined}
 		data-pswp-height={size.height ?? undefined}
 		aria-label="Photo"
+		data-conversation-photo
 		aria-disabled={failed ? "true" : undefined}
 		class="item block"
 	>

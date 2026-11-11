@@ -36,6 +36,8 @@ const conversationDataSchema = z.object({
 	preview: z
 		.object({
 			type: z.string(),
+			/** Who sent the previewed message; lets the inbox mark our own. */
+			senderId: z.number().nullish(),
 			text: z.string().nullish(),
 			albumId: z.number().nullish(),
 			imageHash: mediaHashPublicSchema.nullish(),

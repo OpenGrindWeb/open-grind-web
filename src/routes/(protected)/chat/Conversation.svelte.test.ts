@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Drafts } from "#lib/chat/drafts.svelte.ts";
 
 const { conversations, currentPage, playHapticMock } = vi.hoisted(() => ({
-	conversations: { drafts: null as Drafts | null },
+	conversations: { drafts: null as Drafts | null, ourProfileId: 1 },
 	currentPage: { params: {} },
 	playHapticMock: vi.fn(),
 }));
@@ -65,6 +65,13 @@ function conversation(
 	};
 }
 
+function sentBy(
+	senderId: number,
+	text: string,
+): ConversationType["data"]["preview"] {
+	return { type: "Text", text, senderId };
+}
+
 function textPreview(text: string): ConversationType["data"]["preview"] {
 	return {
 		type: "Text",
@@ -111,6 +118,15 @@ describe("Conversation preview line", () => {
 		const { container } = renderRow(textPreview("hello there"));
 
 		expect(previewLine(container)).toBe("hello there");
+	});
+
+	it("marks a last message we sent ourselves", () => {
+		const ours = renderRow(sentBy(1, "on my way"));
+		expect(previewLine(ours.container)).toBe("You: on my way");
+		cleanup();
+
+		const theirs = renderRow(sentBy(2, "see you"));
+		expect(previewLine(theirs.container)).toBe("see you");
 	});
 
 	it("replaces the preview with the draft, one space after the prefix", () => {
