@@ -14,8 +14,16 @@ mod events;
 mod gate;
 mod ipc;
 mod media;
+mod photo;
 mod spa;
 mod store;
+mod upload;
+
+// Compiled unchanged from the upstream Tauri tree.
+#[path = "../../src-tauri/src/hex.rs"]
+mod hex;
+#[path = "../../src-tauri/src/video/mod.rs"]
+mod video;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -43,6 +51,7 @@ pub struct AppState {
 	pub app_data_dir: PathBuf,
 	pub store: SecretStore,
 	pub recovery: Arc<auth::SessionRecovery>,
+	pub staging: upload::Staging,
 }
 
 impl AppState {
@@ -97,6 +106,32 @@ fn persist_session(client: &grindr::GrindrClient, store: SecretStore, mut stored
 	});
 }
 
+/// Port of the signing key loop in the Tauri setup: restore the device key
+/// used by signed uploads, then persist every change.
+fn persist_signing_key(client: &grindr::GrindrClient, store: SecretStore) {
+	let client = client.clone();
+	let mut key_rx = client.signing_key_receiver();
+	tokio::spawn(async move {
+		if let Ok(Some(key)) = store.load::<grindr::DeviceSigningKey>(store::SIGNING_KEY) {
+			if !client.restore_signing_key(key).await {
+				tracing::warn!("[signing] stored key was refused, deleting it");
+				store.delete(store::SIGNING_KEY);
+			}
+		}
+		while key_rx.changed().await.is_ok() {
+			let key = key_rx.borrow().clone();
+			match key {
+				Some(k) => {
+					if let Err(e) = store.save(store::SIGNING_KEY, &k) {
+						tracing::error!("[signing] persist failed: {e}");
+					}
+				}
+				None => store.delete(store::SIGNING_KEY),
+			}
+		}
+	});
+}
+
 pub fn router(state: AppState, static_dir: PathBuf) -> Router {
 	fn spa_index<S: Clone + Send + Sync + 'static>(index: &spa::Index) -> MethodRouter<S> {
 		let index = index.clone();
@@ -119,6 +154,10 @@ pub fn router(state: AppState, static_dir: PathBuf) -> Router {
 		.route("/ipc/{command}", post(ipc::handler))
 		.route("/events", get(events::handler))
 		.route("/media/{scheme}/{path}", get(media::handler))
+		.route(
+			"/stage",
+			post(upload::stage).layer(axum::extract::DefaultBodyLimit::max(upload::MAX_STAGED_BYTES)),
+		)
 		.fallback_service(assets)
 		.layer(axum::middleware::from_fn_with_state(state.clone(), gate::require_session))
 		// Images are already skipped by the default predicate; video must be
@@ -188,6 +227,7 @@ async fn main() -> Result<(), String> {
 	let client = grindr::GrindrClient::new(device, resumed)
 		.map_err(|e| format!("failed to build GrindrClient: {e}"))?;
 	persist_session(&client, store.clone(), credentials);
+	persist_signing_key(&client, store.clone());
 
 	let events = EventHub::new();
 	events::forward_client_events(client.clone(), events.clone());
@@ -200,6 +240,8 @@ async fn main() -> Result<(), String> {
 	}
 	let app_data_dir = data_dir.join("app-data");
 	std::fs::create_dir_all(&app_data_dir).map_err(|e| format!("OG_DATA_DIR: {e}"))?;
+	let staging = upload::Staging::open(&data_dir).map_err(|e| format!("OG_DATA_DIR: {e}"))?;
+	staging.spawn_janitor();
 
 	let state = AppState {
 		client: Some(client),
@@ -209,6 +251,7 @@ async fn main() -> Result<(), String> {
 		app_data_dir,
 		store,
 		recovery,
+		staging,
 	};
 
 	let listener = tokio::net::TcpListener::bind(bind)

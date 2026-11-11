@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use crate::auth;
+use crate::{auth, upload};
 use crate::error::AppError;
 use crate::AppState;
 
@@ -76,6 +76,25 @@ async fn dispatch(app: &AppState, command: &str, args: serde_json::Value) -> Opt
 			Ok(a) => auth::set_app_active(app, a).await.and_then(to_json),
 			Err(e) => Err(e),
 		},
+		// media uploads (upload.rs)
+		"inspect_media_file" => match parse(args) {
+			Ok(a) => upload::inspect_media_file(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		"preview_media" => match parse(args) {
+			Ok(a) => upload::preview_media(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		"upload_media_file" => match parse(args) {
+			Ok(a) => upload::upload_media_file(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		"upload_media" => match parse(args) {
+			Ok(a) => upload::upload_media(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
+		// Staged copies expire on their own; nothing to discard eagerly.
+		"discard_staged_media" => to_json(()),
 		// Grindr websocket (ws.rs)
 		"ws_connect" => auth::ws_connect(app).await.and_then(to_json),
 		"ws_reconnect" => auth::ws_reconnect(app).await.and_then(to_json),
@@ -111,7 +130,7 @@ fn requires_device_signature(path: &str) -> bool {
 	SIGNED_UPLOAD_PATHS.contains(&path)
 }
 
-fn refuse_signed_path(path: &str) -> Result<(), AppError> {
+pub(crate) fn refuse_signed_path(path: &str) -> Result<(), AppError> {
 	if requires_device_signature(path) {
 		return Err(AppError::Api {
 			code: 400,
@@ -122,10 +141,10 @@ fn refuse_signed_path(path: &str) -> Result<(), AppError> {
 }
 
 #[derive(Serialize, Deserialize)]
-struct RawResponse {
-	status: u16,
+pub(crate) struct RawResponse {
+	pub status: u16,
 	#[serde(with = "serde_bytes")]
-	body: Vec<u8>,
+	pub body: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -156,7 +175,7 @@ fn decode_request(payload: &str) -> Result<RequestPayload, AppError> {
 		.map_err(|e| AppError::Http(format!("Failed to decode request payload: {e}")))
 }
 
-fn encode_response(response: &RawResponse) -> Result<String, AppError> {
+pub(crate) fn encode_response(response: &RawResponse) -> Result<String, AppError> {
 	rmp_serde::encode::to_vec_named(response)
 		.map(|bytes| STANDARD.encode(&bytes))
 		.map_err(|e| AppError::Http(e.to_string()))

@@ -218,7 +218,8 @@ pub async fn require_session(
 	}
 
 	let authed = session_cookie(request.headers()).is_some_and(|t| app.gate.is_valid(t));
-	let is_api = path.starts_with("/ipc/") || path == "/events";
+	let is_post_api = path.starts_with("/ipc/") || path == "/stage";
+	let is_api = is_post_api || path == "/events" || path.starts_with("/media/");
 
 	if !authed {
 		return if is_api {
@@ -229,7 +230,7 @@ pub async fn require_session(
 		};
 	}
 
-	if path.starts_with("/ipc/")
+	if is_post_api
 		&& (request.method() != Method::POST || !request.headers().contains_key(IPC_HEADER))
 	{
 		return StatusCode::FORBIDDEN.into_response();

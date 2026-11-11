@@ -18,6 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends cmake clang lib
 WORKDIR /src/server
 COPY server/Cargo.toml server/Cargo.lock* ./
 COPY server/src ./src
+# Upstream modules compiled unchanged through #[path] (photo, video, form, hex)
+COPY src-tauri/src/hex.rs /src/src-tauri/src/hex.rs
+COPY src-tauri/src/photo /src/src-tauri/src/photo
+COPY src-tauri/src/video /src/src-tauri/src/video
+COPY src-tauri/src/upload/form.rs /src/src-tauri/src/upload/form.rs
 RUN cargo build --release --locked || cargo build --release
 
 FROM debian:bookworm-slim

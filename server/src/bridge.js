@@ -127,7 +127,64 @@
 		});
 	}
 
+	// Replacement for the native file dialog: Safari's picker, then each file is
+	// staged on the server and the front gets an opaque `/staged/...` path it
+	// passes back to inspect/preview/upload as a "desktop" file.
+	const imageExtensions = ["jpg", "jpeg", "png", "webp"];
+	const videoExtensions = ["mp4", "mov"];
+
+	function acceptFor(filters = []) {
+		const extensions = filters.flatMap((filter) => filter.extensions ?? []);
+		const accept = [];
+		if (extensions.some((ext) => imageExtensions.includes(ext))) accept.push("image/*");
+		if (extensions.some((ext) => videoExtensions.includes(ext))) accept.push("video/*");
+		return accept.length ? accept.join(",") : "image/*,video/*";
+	}
+
+	function chooseFiles({ accept, multiple }) {
+		return new Promise((resolve) => {
+			const input = document.createElement("input");
+			input.type = "file";
+			input.accept = accept;
+			input.multiple = multiple;
+			input.style.display = "none";
+			document.body.append(input);
+			const done = (files) => {
+				input.remove();
+				resolve(files);
+			};
+			input.addEventListener("change", () => done(Array.from(input.files ?? [])), { once: true });
+			input.addEventListener("cancel", () => done([]), { once: true });
+			input.click();
+		});
+	}
+
+	async function stageFile(file) {
+		const response = await fetch("/stage", {
+			method: "POST",
+			credentials: "same-origin",
+			headers: {
+				"content-type": file.type || "application/octet-stream",
+				"x-og-filename": encodeURIComponent(file.name || ""),
+				"x-og-ipc": "1",
+			},
+			body: file,
+		});
+		const body = await response.json().catch(() => null);
+		if (!response.ok) throw body ?? { kind: "Media", message: `Upload staging failed (${response.status})` };
+		return body.path;
+	}
+
+	async function openDialog({ options = {} } = {}) {
+		const multiple = options.multiple === true;
+		const files = await chooseFiles({ accept: acceptFor(options.filters), multiple });
+		if (files.length === 0) return null;
+		const paths = await Promise.all(files.map(stageFile));
+		return multiple ? paths : paths[0];
+	}
+
 	const local = {
+		"plugin:dialog|open": openDialog,
 		"plugin:event|listen": ({ event, handler }) => {
 			const eventId = nextEventId++;
 			if (!listeners.has(event)) listeners.set(event, new Map());
