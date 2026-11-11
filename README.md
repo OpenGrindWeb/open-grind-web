@@ -1,48 +1,107 @@
+# Open Grind Web
+
+**Open Grind, served from your own server as a web app you add to your iPhone's home screen.**
+No Mac, no sideloading, no reinstalling every seven days.
+
 > [!IMPORTANT]
-> **This is Open Grind Web, an unofficial fork** that serves Open Grind as a
-> self-hosted web app for iPhone. It is not affiliated with or endorsed by the
-> Open Grind project. See [WEB.md](./WEB.md) for what it changes and how to
-> deploy it. The text below is upstream's README; its download links point to
-> the official app.
+> This is an **unofficial fork** of [Open Grind](https://git.opengrind.org/open-grind/open-grind),
+> itself an unofficial Grindr client. It is not affiliated with or endorsed by
+> the Open Grind project or by Grindr. For the official Open Grind apps, see
+> [opengrind.org](https://opengrind.org).
 
-# Open Grind
+<table>
+	<tr>
+		<td><img src="contrib/web/1.jpeg" alt="Browse grid" width="180"></td>
+		<td><img src="contrib/web/2.jpeg" alt="Conversation" width="180"></td>
+		<td><img src="contrib/web/3.jpeg" alt="Taps" width="180"></td>
+	</tr>
+	<tr>
+		<td><img src="contrib/web/4.jpeg" alt="Filters" width="180"></td>
+		<td><img src="contrib/web/5.jpeg" alt="Profile" width="180"></td>
+		<td><img src="contrib/web/6.jpeg" alt="Location picker" width="180"></td>
+	</tr>
+</table>
 
-[![Matrix space](https://img.shields.io/matrix/opengrind:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=matrix%20space)](https://matrix.to/#/#opengrind:opengrind.org) [![chat](https://img.shields.io/matrix/general:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=chat)](https://matrix.to/#/#general:opengrind.org) [![Announcements](https://img.shields.io/matrix/announcements:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=announcements)](https://matrix.to/#/#announcements:opengrind.org)
+<sub>Demo mode, no real profiles. See <a href="#credits">credits</a> for the media shown.</sub>
 
-**Unofficial Grindr client. Cross-platform, free, libre, ad-free, tracker-free, privacy-centered and community-driven.**
+## What you get
 
-![Screenshots](./contrib/app-screenshots-1x6.avif)
+Everything Open Grind does that a browser can do, plus:
 
-## Download
+- **A home-screen app on iPhone**: full screen, its own icon, no Safari bars.
+- **An iOS look**: system materials, a floating tab bar, Messages-style inbox
+  and bubbles, segmented controls, sheets and menus.
+- **Right Now**: browse the feed and post, from upstream's work in progress.
+- **Filters that fit**: what doesn't fit the bar folds into a "…" menu.
+- **Smoother navigation**: tab switches slide, the active tab's highlight
+  follows, swipe through every photo of a conversation.
+- **Your last message marked** in the inbox (`You:`).
+- **Four languages**: English, French, Spanish and German, following your
+  device (Settings › App › Language).
+- **Photo and video uploads** from the Photos library, with metadata stripped
+  as in the desktop app.
 
-- **[Download Open Grind](https://opengrind.org/download)** from the official website
-- **[Source releases page](https://git.opengrind.org/open-grind/open-grind/releases)** at git.opengrind.org/open-grind/open-grind
-- **[Google Play](https://play.google.com/store/apps/details?id=org.opengrind)** for Android
+## How it works
 
-Never install Open Grind from sources not listed above.
+`og-server`, a small Rust server, hosts the app and talks to Grindr the way
+the desktop app does; your phone only ever talks to your server. It sits
+behind an **access gate**: a 6-digit code from your authenticator app (iOS
+Passwords can fill it in), or a password. Sessions last 30 days.
 
-## Security
+Details, architecture and every setting: **[WEB.md](./WEB.md)**.
 
-All releases are signed. Learn more in [KEYS.md](./KEYS.md).
+## Set it up
 
-Open Grind supports reproducible builds. Learn more in [REPRODUCIBILITY.md](./REPRODUCIBILITY.md).
+1. **Deploy** with the Pterodactyl egg (`server/pterodactyl/egg-open-grind-web.json`)
+   or Docker (`server/Dockerfile`), behind HTTPS (a reverse proxy such as Caddy,
+   Nginx Proxy Manager or Traefik).
+2. **Scan** the QR code printed in the console on first start with your
+   authenticator app.
+3. On your iPhone, open your domain in Safari, enter the code, sign in to
+   Grindr, then **Share › Add to Home Screen**.
+
+Updating: reinstall (Pterodactyl) or rebuild the image; your data stays.
+
+## Not on the web build
+
+Google and Facebook sign-in, accounts that need reCAPTCHA, push
+notifications and HEIC decoding (Safari hands over JPEG, so photos still work).
+
+## Things to know
+
+- Your server holds your Grindr session: keep the gate on and the server
+  private.
+- Grindr sees your server's IP address, not your phone's. A server at home
+  looks more like a phone than one in a data centre.
+- Using an unofficial client can go against Grindr's terms; use it at your
+  own risk.
 
 ## Development
 
-Interested in contributing to the project? Head to [CONTRIBUTING.md](./CONTRIBUTING.md) to get started. All contributions must be aligned with [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
+```bash
+bun install
+OPEN_GRIND_DEMO=1 bunx vite dev   # the app with demo data, no account
+cd server && cargo test           # needs cmake and clang (BoringSSL)
+```
 
-To build Open Grind yourself, follow [BUILDING.md](./BUILDING.md).
+Upstream changes are merged from the official repository; changes to the
+front are kept to a few components so those merges stay easy.
 
-## Problems, bugs, feature requests?
+## Credits
 
-Check out [issues](https://git.opengrind.org/open-grind/open-grind/issues) and the Matrix chatroom [#opengrind:opengrind.org](https://matrix.to/#/#opengrind:opengrind.org).
+Built on [Open Grind](https://git.opengrind.org/open-grind/open-grind) by
+the Open Grind Governance and its contributors, and on upstream's Right Now
+pull requests.
+
+The screenshots show demo data: avatars in the
+[Lorelei](https://www.dicebear.com/styles/lorelei/) style by Lisa Wischofsky
+(CC0 1.0), photos from [Lorem Picsum](https://picsum.photos) (Unsplash
+License), icons from [Phosphor Icons](https://phosphoricons.com) (MIT), emoji
+from [Noto Emoji](https://github.com/googlefonts/noto-emoji) (Apache 2.0) and
+map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL).
 
 ## License
 
-Code: [MIT](./LICENSE)
-
-Logo, icons and other artwork: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (public domain), see [ARTWORK.md](./ARTWORK.md)
-
-## Donate
-
-See [FUNDING.md](./FUNDING.md)
+Code: [MIT](./LICENSE). Logo, icons and other artwork from upstream:
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/), see
+[ARTWORK.md](./ARTWORK.md).
