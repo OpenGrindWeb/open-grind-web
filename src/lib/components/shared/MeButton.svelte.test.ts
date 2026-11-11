@@ -23,12 +23,6 @@ vi.mock("#lib/api/users/profiles.ts", async (importOriginal) => ({
 	...(await importOriginal<typeof import("#lib/api/users/profiles.ts")>()),
 	getProfile: getProfileMock,
 }));
-vi.mock("#lib/chat/conversations-context.svelte.ts", () => ({
-	getOrCreateConversationsState: () => ({ hasUnread: false }),
-}));
-vi.mock("#lib/interest/taps-state.svelte.ts", () => ({
-	getTapsState: () => ({ hasUnseen: false }),
-}));
 vi.mock("#lib/util/media.ts", async (importOriginal) => ({
 	...(await importOriginal<typeof import("#lib/util/media.ts")>()),
 	profileMediaUrl: ({ mediaHash }: { mediaHash: string }) =>
@@ -36,7 +30,7 @@ vi.mock("#lib/util/media.ts", async (importOriginal) => ({
 }));
 
 import { mergeProfileEditIntoCaches } from "#lib/api/users/profiles.ts";
-import NavBar from "./NavBar.svelte";
+import MeButton from "./MeButton.svelte";
 
 function medias(...mediaHashes: string[]): Profile["medias"] {
 	return mediaHashes.map((mediaHash) => ({
@@ -75,10 +69,10 @@ beforeEach(() => {
 
 afterEach(() => cleanup());
 
-describe("navbar avatar", () => {
+describe("Me button avatar", () => {
 	it("shows the new main photo once our profile photos are saved", async () => {
 		getProfileMock.mockResolvedValue(profileWith(medias("first")));
-		const { container } = render(NavBar, {
+		const { container } = render(MeButton, {
 			props: { ourProfileId: OUR_ID },
 		});
 		expect(await renderedAvatar(container)).toBe("https://cdn.test/first");
@@ -96,7 +90,7 @@ describe("navbar avatar", () => {
 
 	it("ignores photo edits to another profile", async () => {
 		getProfileMock.mockResolvedValue(profileWith(medias("first")));
-		const { container } = render(NavBar, {
+		const { container } = render(MeButton, {
 			props: { ourProfileId: OUR_ID },
 		});
 		expect(await renderedAvatar(container)).toBe("https://cdn.test/first");
@@ -113,7 +107,7 @@ describe("navbar avatar", () => {
 	it("keeps the saved photos when the first profile fetch answers later", async () => {
 		const { promise, resolve } = Promise.withResolvers<Profile>();
 		getProfileMock.mockReturnValue(promise);
-		const { container } = render(NavBar, {
+		const { container } = render(MeButton, {
 			props: { ourProfileId: OUR_ID },
 		});
 		await tick();

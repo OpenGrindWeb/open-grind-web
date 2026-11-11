@@ -105,8 +105,8 @@ body {
 
 /* ------------------------------------------------------------- tab bar */
 
-/* Floating tab bar: a capsule and the Me button hover over the content,
-   no bar behind them */
+/* Floating tab bar: a capsule hovering over the content, no bar behind it
+   (Me lives in Browse's top bar) */
 nav[aria-label="Main"] {
 	background: transparent !important;
 	-webkit-backdrop-filter: none !important;
@@ -115,10 +115,11 @@ nav[aria-label="Main"] {
 	pointer-events: none;
 }
 
-nav[aria-label="Main"] .links,
-nav[aria-label="Main"] a[aria-label="Me"] {
+nav[aria-label="Main"] .links {
 	pointer-events: auto;
 }
+
+
 
 /* upstream's progressive (gradient) blur gives way to a uniform material on
    every screen bar, top and bottom */
@@ -193,19 +194,6 @@ nav[aria-label="Main"] .links > a:active {
 	opacity: 0.55;
 }
 
-nav[aria-label="Main"] a[aria-label="Me"] {
-	width: 58px !important;
-	height: 58px !important;
-	padding: 4px !important;
-	align-self: center;
-	background-color: var(--mat-thick) !important;
-	-webkit-backdrop-filter: var(--mat-blur) !important;
-	backdrop-filter: var(--mat-blur) !important;
-	border: none !important;
-	box-shadow:
-		inset 0 0 0 0.5px rgb(255 255 255 / 0.12),
-		0 8px 28px rgb(0 0 0 / 0.55) !important;
-}
 
 nav[aria-label="Main"] [data-slot="badge"] {
 	background: var(--ios-red) !important;

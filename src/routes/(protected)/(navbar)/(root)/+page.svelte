@@ -8,6 +8,8 @@
 	import Grid from "./Grid.svelte";
 	import TopBar from "./top-bar/TopBar.svelte";
 
+	let { data }: import("./$types").PageProps = $props();
+
 	let gridContainer: HTMLElement | null = $state(null);
 
 	restoreScrollOnce({
@@ -37,7 +39,7 @@
 <LocationGate>
 	{#snippet children({ geohash })}
 		<main class="screen-nav-host">
-			<TopBar />
+			<TopBar ourProfileId={data.ourProfileId} />
 			{#if !gridState.loading && !gridState.error}
 				<DataRefreshControl
 					container={gridContainer}

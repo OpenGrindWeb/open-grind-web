@@ -6,34 +6,15 @@
 	import FireIcon from "phosphor-svelte/lib/FireIcon";
 	import { untrack } from "svelte";
 
-	import { getProfile, onProfileEdit } from "#lib/api/users/profiles.ts";
 	import { getOrCreateConversationsState } from "#lib/chat/conversations-context.svelte.ts";
-	import BrokenUserAvatar from "#lib/components/profile/BrokenUserAvatar.svelte";
-	import UserAvatar from "#lib/components/profile/UserAvatar.svelte";
 	import ProgressiveBlur from "#lib/components/shared/ProgressiveBlur.svelte";
 	import { Badge } from "#lib/components/ui/badge/index.ts";
 	import { tabsListVariants } from "#lib/components/ui/tabs/index.ts";
 	import { getTapsState } from "#lib/interest/taps-state.svelte.ts";
-	import { returnTo } from "#lib/util/history.ts";
-	import { isWithin } from "#lib/util/pathname.ts";
-	import { isPlainClick } from "#lib/util/plain-click.ts";
 	import { bottomChrome } from "#lib/util/screen-chrome.svelte.ts";
+	import { tabNavigation } from "./tab-navigation.ts";
 
 	let { ourProfileId }: { ourProfileId: number } = $props();
-
-	let myProfilePhotos = $state(
-		untrack(() =>
-			getProfile(ourProfileId).then((profile) => profile.medias),
-		),
-	);
-
-	$effect(() =>
-		onProfileEdit(({ profileId, patch }) => {
-			if (profileId !== ourProfileId || patch.medias === undefined)
-				return;
-			myProfilePhotos = Promise.resolve(patch.medias);
-		}),
-	);
 
 	const conversations = untrack(() =>
 		getOrCreateConversationsState(ourProfileId),
@@ -67,28 +48,6 @@
 		resize.observe(links);
 		return () => resize.disconnect();
 	});
-
-	function tabNavigation({
-		href,
-		landsOn = href,
-	}: {
-		href: string;
-		landsOn?: string;
-	}) {
-		return (event: MouseEvent) => {
-			if (!isPlainClick(event)) return;
-
-			const current = page.url.pathname;
-			if (current === landsOn) {
-				event.preventDefault();
-				return;
-			}
-			if (!isWithin({ pathname: current, root: href })) return;
-
-			event.preventDefault();
-			returnTo(landsOn);
-		};
-	}
 </script>
 
 {#snippet label(text: string)}
@@ -169,31 +128,6 @@
 			{/if}
 		</a>
 	</div>
-	<a
-		href="/settings"
-		aria-label="Me"
-		onclick={tabNavigation({ href: "/settings" })}
-		class={[
-			"flex size-14 shrink-0 rounded-full border bg-muted p-1 transition-colors motion-reduce:transition-none",
-			{
-				"border-2 border-accent":
-					page.route.id === "/(protected)/(navbar)/settings/(me)",
-				"border-border":
-					page.route.id !== "/(protected)/(navbar)/settings/(me)",
-			},
-		]}
-	>
-		{#await myProfilePhotos then photos}
-			{@const mainPhoto = photos[0] as { mediaHash: string } | undefined}
-			<UserAvatar
-				mediaHash={mainPhoto?.mediaHash ?? null}
-				class="size-full *:rounded-full"
-				size="lg"
-			/>
-		{:catch}
-			<BrokenUserAvatar />
-		{/await}
-	</a>
 </ProgressiveBlur>
 
 <style lang="postcss">
