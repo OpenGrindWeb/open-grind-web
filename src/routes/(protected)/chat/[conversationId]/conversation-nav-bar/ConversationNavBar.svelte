@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ArrowLeftIcon from "phosphor-svelte/lib/ArrowLeftIcon";
+	import CaretLeftIcon from "phosphor-svelte/lib/CaretLeftIcon";
 
 	import BackLink from "#lib/components/navigation/BackLink.svelte";
 	import ProgressiveBlur from "#lib/components/shared/ProgressiveBlur.svelte";
@@ -23,21 +23,20 @@
 	<BackLink
 		href="/chat"
 		label="Back to chats"
-		class="flex h-full w-19 items-center justify-center"
+		class="flex h-full w-14 shrink-0 items-center justify-center text-primary"
 	>
-		<ArrowLeftIcon size={32} />
+		<CaretLeftIcon size={28} weight="bold" />
 	</BackLink>
 	{#if conversationState.profile !== null}
 		<ConversationNavBarProfile profile={conversationState.profile} />
 	{:else if conversationState.error}
 		<span class="flex-1">Failed to load conversation</span>
 	{:else}
-		<div class="flex flex-1 items-center gap-3 py-4 ps-0">
-			<Skeleton class="size-avatar rounded-full" />
-			<div class="flex flex-col gap-2">
-				<Skeleton class="h-4 w-20 rounded-md" />
-				<Skeleton class="h-3 w-12 rounded-md" />
-			</div>
+		<div class="flex flex-1 flex-col items-center justify-center gap-1">
+			<Skeleton class="size-9 rounded-full" />
+			<Skeleton class="h-3 w-20 rounded-md" />
 		</div>
 	{/if}
+	<!-- balances the back button so the profile stays centred, iOS style -->
+	<span class="w-14 shrink-0" aria-hidden="true"></span>
 </ProgressiveBlur>

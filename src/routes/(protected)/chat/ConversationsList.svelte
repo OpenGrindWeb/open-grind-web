@@ -188,7 +188,7 @@
 			bind:this={container}
 			data-slot="conversations-scroller"
 			class={[
-				"flex min-h-0 flex-1 flex-col gap-1 overflow-auto overscroll-contain px-4",
+				"flex min-h-0 flex-1 flex-col overflow-auto overscroll-contain",
 				{
 					"pt-header-clear-15": !selecting,
 					"pt-[calc(var(--selection-bar-height)+var(--bar-content-gap))]":
@@ -200,7 +200,7 @@
 		>
 			{#if conversations.loading}
 				{#each Array(8)}
-					<Skeleton class="h-24.5 w-full shrink-0" />
+					<Skeleton class="h-19 w-full shrink-0 rounded-none" />
 				{/each}
 			{:else if conversations.error && conversations.entries.length === 0}
 				<div class="flex flex-1">
@@ -213,7 +213,7 @@
 			{:else}
 				<div
 					data-refresh-content
-					class="min-h-overscrollable flex shrink-0 flex-col gap-1 pb-nav-clear"
+					class="min-h-overscrollable flex shrink-0 flex-col pb-nav-clear"
 				>
 					{#each conversations.entries as conversation, i (conversation.data.conversationId)}
 						{@const conversationId =

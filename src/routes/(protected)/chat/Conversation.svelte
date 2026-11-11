@@ -2,6 +2,7 @@
 	import { page } from "$app/state";
 	import BellIcon from "phosphor-svelte/lib/BellIcon";
 	import BellSimpleSlashIcon from "phosphor-svelte/lib/BellSimpleSlashIcon";
+	import CaretRightIcon from "phosphor-svelte/lib/CaretRightIcon";
 	import PushPinIcon from "phosphor-svelte/lib/PushPinIcon";
 	import PushPinSlashIcon from "phosphor-svelte/lib/PushPinSlashIcon";
 	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
@@ -101,7 +102,7 @@
 		{#snippet description()}
 			<Item.Description
 				class={[
-					"wrap-anywhere",
+					"line-clamp-2 text-[15px] leading-snug wrap-anywhere",
 					{
 						"font-medium text-white":
 							draft === "" &&
@@ -127,9 +128,11 @@
 			</Item.Description>
 		{/snippet}
 		{#snippet actions()}
-			<Item.Actions class="flex min-w-0 flex-col items-end gap-1">
+			<Item.Actions
+				class="flex min-w-0 flex-col items-end gap-1.5 self-start pt-0.5"
+			>
 				<span
-					class="flex max-w-full items-center gap-1 font-medium text-muted-foreground"
+					class="flex max-w-full items-center gap-1 text-[15px] text-muted-foreground"
 				>
 					{#if conversation.data.pinned}
 						<PushPinIcon weight="fill" class="size-4 shrink-0" />
@@ -139,6 +142,10 @@
 							date={conversation.data.lastActivityTimestamp}
 						/>
 					</span>
+					<CaretRightIcon
+						weight="bold"
+						class="size-3.5 shrink-0 opacity-50"
+					/>
 				</span>
 				{#if conversation.data.unreadCount > 0}
 					<Badge

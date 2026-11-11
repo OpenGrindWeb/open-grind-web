@@ -47,41 +47,46 @@
 	const accessibleName = $derived(title.value ?? title.fallback ?? "Someone");
 </script>
 
+<!-- iOS list row: round avatar, text block with a hairline under it that
+     starts where the text does (inset separator), trailing accessories. -->
 {#snippet avatarNode()}
-	<Item.Media class="relative translate-y-0! rounded-2xl p-2">
-		<Avatar.Root class="size-20 after:rounded-xl">
+	<Item.Media class="relative translate-y-0! py-2.5 ps-4 pe-3">
+		<Avatar.Root class="size-14 after:rounded-full">
 			<UserAvatar
 				mediaHash={avatar.mediaHash}
-				class="size-20 rounded-xl bg-neutral-700 *:rounded-xl"
+				class="size-14 rounded-full bg-neutral-700 *:rounded-full"
 			/>
 		</Avatar.Root>
 		{@render avatar.overlay?.()}
 	</Item.Media>
 {/snippet}
 {#snippet contentNode()}
-	<Item.Content class="min-w-0 flex-1">
-		<Item.Title
-			class={[
-				"flex w-auto min-w-0 items-center gap-1 truncate",
-				{ "text-muted-foreground": !title.value },
-			]}
-		>
-			{@render title.badge?.()}
-			<ProfileStatusIndicator {onlineUntil} />
-			<DisplayName
-				name={title.value}
-				fallback={title.fallback}
-				class="truncate"
-			/>
-		</Item.Title>
-		{@render description?.()}
-	</Item.Content>
-	{@render actions?.()}
+	<div data-slot="profile-item-body" class="body">
+		<Item.Content class="min-w-0 flex-1 gap-0.5">
+			<Item.Title
+				class={[
+					"flex w-auto min-w-0 items-center gap-1 truncate text-[17px] leading-tight font-semibold tracking-[-0.02em]",
+					{ "text-muted-foreground": !title.value },
+				]}
+			>
+				{@render title.badge?.()}
+				<ProfileStatusIndicator {onlineUntil} />
+				<DisplayName
+					name={title.value}
+					fallback={title.fallback}
+					class="truncate"
+				/>
+			</Item.Title>
+			{@render description?.()}
+		</Item.Content>
+		{@render actions?.()}
+	</div>
 {/snippet}
 <Item.Root
-	variant={active ? "muted" : "outline"}
+	variant={active ? "muted" : "default"}
+	data-profile-item
 	class={[
-		"@container relative flex min-w-24 flex-nowrap items-stretch gap-0 p-0",
+		"@container relative flex min-w-24 flex-nowrap items-stretch gap-0 rounded-none p-0 active:bg-white/6 [a]:hover:bg-transparent",
 		{
 			"border-primary outline-2 -outline-offset-2 outline-primary outline-solid":
 				selected,
@@ -95,14 +100,14 @@
 		<a
 			href={avatar.link}
 			aria-label="{accessibleName}'s profile"
-			class="rounded-l-2xl @max-row:hidden"
+			class="@max-row:hidden"
 			tabindex={linkTabindex}
 		>
 			{@render avatarNode()}
 		</a>
 		<a
 			href={link}
-			class="content gap-0.5 rounded-r-2xl p-4 ps-2 @max-row:hidden!"
+			class="content @max-row:hidden!"
 			tabindex={linkTabindex}
 		>
 			{@render contentNode()}
@@ -110,7 +115,7 @@
 		<a
 			href={link}
 			aria-label={accessibleName}
-			class="min-w-24 rounded-2xl @row:hidden"
+			class="min-w-24 @row:hidden"
 			tabindex={linkTabindex}
 		>
 			{@render avatarNode()}
@@ -118,7 +123,7 @@
 	{:else}
 		<a
 			href={link}
-			class="content gap-2.5 overflow-clip rounded-2xl pe-4"
+			class="content overflow-clip"
 			tabindex={linkTabindex}
 		>
 			{@render avatarNode()}
@@ -126,7 +131,7 @@
 		</a>
 	{/if}
 	{#if control}
-		<div class="flex shrink-0 items-center ps-3 pe-4">
+		<div class="flex shrink-0 items-center border-b-[0.5px] border-(--ios-separator) ps-3 pe-4">
 			{@render control()}
 		</div>
 	{/if}
@@ -151,5 +156,10 @@
 
 	.content {
 		@apply flex min-w-0 flex-1 items-center self-stretch;
+	}
+
+	.body {
+		@apply flex min-w-0 flex-1 items-center gap-2 self-stretch py-2.5 pe-4;
+		border-bottom: 0.5px solid var(--ios-separator, rgb(84 84 88 / 0.65));
 	}
 </style>

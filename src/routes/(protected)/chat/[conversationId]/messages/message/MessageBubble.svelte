@@ -22,12 +22,13 @@
 <div
 	data-slot="message-bubble"
 	class={[
-		"relative w-fit max-w-100 shrink-0 overflow-visible rounded-xl px-3 py-2 select-text",
+		"relative w-fit max-w-100 shrink-0 overflow-visible rounded-[18px] px-3.5 py-[7px] text-[17px] leading-[22px] tracking-[-0.02em] select-text",
 		{
 			"pointer-coarse:select-none": !clone,
 			"rounded-es-none": lastInStack && !isOut,
 			"rounded-ee-none": lastInStack && isOut,
-			"text-black": sent,
+			"text-black": sent && isOut,
+			"text-white": sent && !isOut,
 			"bg-message-bubble-in": sent && !isOut,
 			"bg-message-bubble-out": sent && isOut,
 			"bg-muted text-muted-foreground italic": !sent,

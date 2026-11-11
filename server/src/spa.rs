@@ -2,8 +2,8 @@
 //!
 //! Every HTML navigation gets `index.html` (SPA fallback) with
 //! `<script src="/og-bridge.js">` inserted first in `<head>`, so the bridge
-//! defines the Tauri globals before any app module runs. The front build
-//! itself stays byte-for-byte the upstream one.
+//! defines the Tauri globals before any app module runs, followed by the
+//! PWA tags.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -13,28 +13,6 @@ use axum::response::{IntoResponse, Response};
 
 const BRIDGE_JS: &str = include_str!("bridge.js");
 const BRIDGE_TAG: &str = r#"<script src="/og-bridge.js"></script>"#;
-const THEME_CSS: &str = include_str!("theme.css");
-/// Unlayered, so it wins over Tailwind's `@layer` rules regardless of order;
-/// placed last in `<head>` anyway.
-const THEME_TAG: &str = r#"<link rel="stylesheet" href="/og-theme.css">"#;
-
-/// Development only: `OG_DEV_ASSETS=<server/src dir>` re-reads the theme from
-/// disk on every request, to tune it without rebuilding.
-fn dev_asset(name: &str) -> Option<String> {
-	let dir = std::env::var_os("OG_DEV_ASSETS")?;
-	std::fs::read_to_string(Path::new(&dir).join(name)).ok()
-}
-
-fn asset(content_type: &'static str, body: String) -> Response {
-	(
-		[
-			(header::CONTENT_TYPE, HeaderValue::from_static(content_type)),
-			(header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
-		],
-		body,
-	)
-		.into_response()
-}
 
 #[derive(Clone)]
 pub struct Index(Arc<Option<String>>);
@@ -67,23 +45,11 @@ pub fn inject(html: &str) -> String {
 		.find("<head")
 		.and_then(|start| html[start..].find('>').map(|end| start + end + 1));
 	let head = format!("{BRIDGE_TAG}{}", crate::pwa::HEAD_TAGS);
-	let html = match after_head {
+	match after_head {
 		Some(at) => format!("{}{head}{}", &html[..at], &html[at..]),
 		None => format!("{head}{html}"),
-	};
-	match html.find("</head>") {
-		Some(at) => format!("{}{THEME_TAG}{}", &html[..at], &html[at..]),
-		None => html,
 	}
 }
-
-pub async fn theme() -> Response {
-	asset(
-		"text/css; charset=utf-8",
-		dev_asset("theme.css").unwrap_or_else(|| THEME_CSS.to_owned()),
-	)
-}
-
 
 pub async fn bridge() -> Response {
 	(
@@ -109,7 +75,5 @@ mod tests {
 		assert!(bridge < out.find("<meta").unwrap());
 		assert!(bridge < out.find("type=\"module\"").unwrap());
 		assert!(out.contains("rel=\"manifest\""));
-		assert!(out.find(THEME_TAG).unwrap() < out.find("</head>").unwrap());
-		assert!(out.find(THEME_TAG).unwrap() > out.find("type=\"module\"").unwrap());
 	}
 }

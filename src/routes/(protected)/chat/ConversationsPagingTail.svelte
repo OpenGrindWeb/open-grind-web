@@ -39,7 +39,7 @@
 		</div>
 	{:else if paging.running || listEmpty}
 		{#each Array(listEmpty ? 8 : 6)}
-			<Skeleton class="h-24.5 w-full shrink-0" />
+			<Skeleton class="h-19 w-full shrink-0 rounded-none" />
 		{/each}
 	{/if}
 	<PagingSentinel {paging} class="h-0" />

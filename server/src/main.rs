@@ -149,7 +149,6 @@ pub fn router(state: AppState, static_dir: PathBuf) -> Router {
 		.route("/", spa_index(&state.index))
 		.route("/index.html", spa_index(&state.index))
 		.route("/og-bridge.js", get(spa::bridge))
-		.route("/og-theme.css", get(spa::theme))
 		.route("/manifest.webmanifest", get(pwa::manifest))
 		.route("/og-icons/{name}", get(pwa::icon))
 		.route("/favicon.ico", get(pwa::favicon))

@@ -46,11 +46,11 @@
 	>
 		<div
 			data-refresh-content
-			class="mx-auto min-h-overscrollable flex w-full max-w-120 flex-col gap-1 px-4 pt-header-clear-16 pb-nav-clear"
+			class="mx-auto min-h-overscrollable flex w-full max-w-120 flex-col pt-header-clear-16 pb-nav-clear"
 		>
 			{#if taps.loading}
 				{#each Array(8)}
-					<Skeleton class="h-24.5 w-full shrink-0" />
+					<Skeleton class="h-19 w-full shrink-0 rounded-none" />
 				{/each}
 			{:else if taps.error && taps.taps.length === 0}
 				<div class="flex flex-1">

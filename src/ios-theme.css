@@ -8,10 +8,10 @@
  * the system materials (ultra thin -> thick), system fills, inset grouped
  * lists, the full-width tab bar and iOS controls.
  *
- * Injected last in <head> by og-server on top of the unmodified upstream
- * build. Unlayered rules win over Tailwind's @layer utilities; only stable
- * hooks are targeted: tokens, data-slot attributes, ARIA landmarks and
- * upstream utility names. Nothing here changes behaviour.
+ * Imported after layout.css by the root layout. Unlayered rules win over
+ * Tailwind's @layer utilities; it targets stable hooks (tokens, data-slot
+ * attributes, ARIA landmarks, upstream utility names) so upstream markup
+ * changes rarely break it. Nothing here changes behaviour.
  */
 
 /* ---------------------------------------------------------------- tokens */
@@ -63,6 +63,10 @@ html:root {
 
 	--radius: 0.75rem;
 	--radius-grid: 12px;
+
+	/* iMessage-like bubbles: received grey, sent in the tint */
+	--message-bubble-in: #262629;
+	--message-bubble-out: var(--ios-tint);
 
 	--font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", system-ui, "Helvetica Neue", sans-serif;
 	--ios-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -266,7 +270,7 @@ nav[aria-label="Main"] [data-slot="badge"] {
 }
 
 /* Name labels over grid photos: ultra thin material capsules */
-[data-slot="badge"]:not(nav [data-slot="badge"]) {
+[data-slot="badge"]:not(nav [data-slot="badge"]):not(.px-count-badge) {
 	background-color: var(--mat-ultrathin) !important;
 	-webkit-backdrop-filter: blur(12px) saturate(170%);
 	backdrop-filter: blur(12px) saturate(170%);
@@ -379,8 +383,9 @@ nav[aria-label="Main"] [data-slot="badge"] {
 
 /* ------------------------------------------------------ lists & content */
 
-/* Inset grouped cells (conversations, settings) */
-[data-slot="item"] {
+/* Inset grouped cells (settings...). Profile rows (Inbox, Interest) are
+   plain iOS list rows, styled in ProfileItem. */
+[data-slot="item"]:not([data-profile-item]) {
 	border-color: transparent !important;
 	background: var(--ios-bg-grouped-cell);
 	border-radius: 10px !important;
@@ -388,7 +393,7 @@ nav[aria-label="Main"] [data-slot="badge"] {
 	transition: background-color 0.15s var(--ios-ease);
 }
 
-[data-slot="item"]:active {
+[data-slot="item"]:not([data-profile-item]):active {
 	background: #3a3a3c;
 }
 
@@ -492,4 +497,23 @@ nav[aria-label="Main"] [data-slot="badge"] {
 	nav[aria-label="Main"] .links > a {
 		transition: none !important;
 	}
+}
+
+/* Unread counts: tinted capsule, like iOS badges */
+[data-slot="badge"].px-count-badge {
+	min-width: 20px;
+	height: 20px;
+	border-radius: 999px !important;
+	font-weight: 600;
+	font-size: 13px;
+}
+
+/* Interest's Views / Taps switch: an iOS segmented control */
+nav[aria-label="Interest"] [data-slot="button"] {
+	height: 32px !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	font-size: 14px !important;
+	font-weight: 600 !important;
+	color: var(--ios-label) !important;
 }

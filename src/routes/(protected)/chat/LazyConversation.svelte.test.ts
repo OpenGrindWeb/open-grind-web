@@ -19,7 +19,7 @@ import type { Conversation as ConversationType } from "#lib/model/messaging/conv
 import LazyConversation from "./LazyConversation.svelte";
 import { MountQueue, type MountTicket } from "./mount-queue";
 
-const PLACEHOLDER = ".bg-muted\\/30";
+const PLACEHOLDER = '[data-slot="conversation-placeholder"]';
 
 class FakeIntersectionObserver {
 	static all: FakeIntersectionObserver[] = [];

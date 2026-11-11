@@ -3,6 +3,7 @@
 	import "@fontsource-variable/ibm-plex-sans/wght-italic.css";
 
 	import "../layout.css";
+	import "../ios-theme.css";
 	import { beforeNavigate } from "$app/navigation";
 	import IconContext from "phosphor-svelte/lib/IconContext";
 	import { onMount, untrack } from "svelte";

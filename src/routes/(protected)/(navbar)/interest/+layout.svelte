@@ -70,14 +70,14 @@
 		data-fixed-header
 		class="fixed top-0 left-0 z-10 w-full px-4 pt-fixed-header pb-2"
 		bgClass="bg-linear-to-b from-background to-transparent"
-		contentClass="flex items-center w-full *:flex-1 max-w-120 mx-auto"
+		contentClass="flex h-9 items-center w-full *:flex-1 max-w-120 mx-auto rounded-[10px] bg-white/10 p-0.5"
 		{@attach topChrome}
 	>
 		<span
 			data-slot="interest-tab-chip"
 			aria-hidden="true"
 			class={[
-				"tab-chip pointer-events-none absolute inset-y-0 left-0 -z-10 rounded-3xl bg-muted-foreground/15",
+				"tab-chip pointer-events-none absolute inset-y-0.5 left-0 -z-10 rounded-[8px] bg-[#636366] shadow-[0_3px_8px_rgb(0_0_0/0.12),0_3px_1px_rgb(0_0_0/0.04)]",
 				{ "tab-chip-following": chipFollows },
 			]}
 			style:width="{100 / INTEREST_TABS.length}%"
