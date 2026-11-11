@@ -73,12 +73,14 @@ import {
 	demoReportRightNowPost,
 	demoRightNowPostReport,
 } from "./mock/reports";
+import { demoRightNowFeed } from "./mock/right-now";
+import { demoRightNowPostRoute } from "./mock/right-now-post";
 import {
 	demoAccountPreferences,
 	demoSetAccountPreferences,
 } from "./mock/settings";
 
-type DemoResponse = { status: number; body: unknown };
+export type DemoResponse = { status: number; body: unknown };
 
 function ok(body: unknown): DemoResponse {
 	return { status: 200, body };
@@ -168,6 +170,16 @@ export function demoRoute({
 	if (method === "GET" && rawPath === "/v4/cascade") {
 		return ok(demoCascadeV4(params));
 	}
+	if (
+		method === "GET" &&
+		(rawPath === "/v4/rightnow/feed" ||
+			rawPath === "/v5/rightnow/feed" ||
+			rawPath === "/v6/rightnow/feed")
+	) {
+		return ok(demoRightNowFeed(params));
+	}
+	const rightNowPost = demoRightNowPostRoute({ method, rawPath, body });
+	if (rightNowPost !== null) return rightNowPost;
 	if (method === "GET" && rawPath === "/v7/search") {
 		return ok({ profiles: demoSearchProfiles(params) });
 	}
