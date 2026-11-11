@@ -42,7 +42,7 @@
             "name": "Git branch",
             "description": "Branch to build.",
             "env_variable": "GIT_BRANCH",
-            "default_value": "web/server-skeleton",
+            "default_value": "main",
             "user_viewable": true,
             "user_editable": true,
             "rules": "required|string|max:100",

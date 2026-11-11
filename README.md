@@ -1,3 +1,10 @@
+> [!IMPORTANT]
+> **This is Open Grind Web, an unofficial fork** that serves Open Grind as a
+> self-hosted web app for iPhone. It is not affiliated with or endorsed by the
+> Open Grind project. See [WEB.md](./WEB.md) for what it changes and how to
+> deploy it. The text below is upstream's README; its download links point to
+> the official app.
+
 # Open Grind
 
 [![Matrix space](https://img.shields.io/matrix/opengrind:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=matrix%20space)](https://matrix.to/#/#opengrind:opengrind.org) [![chat](https://img.shields.io/matrix/general:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=chat)](https://matrix.to/#/#general:opengrind.org) [![Announcements](https://img.shields.io/matrix/announcements:opengrind.org?server_fqdn=matrix.opengrind.org&fetchMode=summary&label=announcements)](https://matrix.to/#/#announcements:opengrind.org)
