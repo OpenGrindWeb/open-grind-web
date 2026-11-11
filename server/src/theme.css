@@ -105,13 +105,19 @@ body {
 
 /* ------------------------------------------------------------- tab bar */
 
-/* iOS 18 tab bar: full width, chrome material, hairline on top */
+/* Floating tab bar: a capsule and the Me button hover over the content,
+   no bar behind them */
 nav[aria-label="Main"] {
-	background-color: var(--mat-chrome) !important;
-	-webkit-backdrop-filter: var(--mat-blur) !important;
-	backdrop-filter: var(--mat-blur) !important;
-	box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.15);
-	padding-top: 6px !important;
+	background: transparent !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+	box-shadow: none !important;
+	pointer-events: none;
+}
+
+nav[aria-label="Main"] .links,
+nav[aria-label="Main"] a[aria-label="Me"] {
+	pointer-events: auto;
 }
 
 /* upstream's progressive (gradient) blur gives way to a uniform material on
@@ -147,22 +153,24 @@ nav[aria-label="Main"] {
 }
 
 nav[aria-label="Main"] .links {
-	background: transparent !important;
-	box-shadow: none !important;
+	background-color: var(--mat-thick) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
 	border: none !important;
-	-webkit-backdrop-filter: none !important;
-	backdrop-filter: none !important;
-	height: 50px !important;
-	padding: 0 !important;
-	flex: 1 1 auto;
-	max-width: 420px;
+	border-radius: 999px !important;
+	box-shadow:
+		inset 0 0 0 0.5px rgb(255 255 255 / 0.12),
+		0 8px 28px rgb(0 0 0 / 0.55) !important;
+	height: 58px !important;
+	padding: 4px !important;
+	gap: 2px;
 }
 
 nav[aria-label="Main"] .links > a {
 	background: transparent !important;
 	border-color: transparent !important;
 	box-shadow: none !important;
-	border-radius: 10px !important;
+	border-radius: 999px !important;
 	color: rgb(153 153 153) !important;
 	font-size: 10px !important;
 	font-weight: 500 !important;
@@ -172,10 +180,11 @@ nav[aria-label="Main"] .links > a {
 }
 
 nav[aria-label="Main"] .links > a > svg {
-	width: 25px !important;
-	height: 25px !important;
+	width: 23px !important;
+	height: 23px !important;
 }
 
+/* The selected tab's lighter pill is NavBar's sliding tab-indicator */
 nav[aria-label="Main"] .links > a[data-active="true"] {
 	color: var(--ios-tint) !important;
 }
@@ -185,13 +194,17 @@ nav[aria-label="Main"] .links > a:active {
 }
 
 nav[aria-label="Main"] a[aria-label="Me"] {
-	width: 44px !important;
-	height: 44px !important;
-	padding: 2px !important;
+	width: 58px !important;
+	height: 58px !important;
+	padding: 4px !important;
 	align-self: center;
-	background: transparent !important;
-	border-width: 1.5px !important;
-	box-shadow: none !important;
+	background-color: var(--mat-thick) !important;
+	-webkit-backdrop-filter: var(--mat-blur) !important;
+	backdrop-filter: var(--mat-blur) !important;
+	border: none !important;
+	box-shadow:
+		inset 0 0 0 0.5px rgb(255 255 255 / 0.12),
+		0 8px 28px rgb(0 0 0 / 0.55) !important;
 }
 
 nav[aria-label="Main"] [data-slot="badge"] {

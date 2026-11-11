@@ -169,3 +169,25 @@ describe("the refresh control", () => {
 		expect(view.contentInset()).toBe(BUTTON_REST_HEIGHT);
 	});
 });
+
+describe("the refresh control with auto refresh at the top", () => {
+	useRefreshControlHarness({ reducedMotion });
+
+	it("refreshes instead of offering the button when a key reaches the top", async () => {
+		const { autoRefresh } = await import("./refresh/auto-refresh");
+		autoRefresh.atTop = true;
+		try {
+			const view = await mountAtRest("top");
+
+			await view.pressInsideList("ArrowDown");
+			await view.contentFramesOver(TWEEN_FRAMES);
+			await view.pressInsideList("ArrowUp");
+			await view.wait(TWEEN_MS);
+
+			expect(view.onrefresh).toHaveBeenCalledTimes(1);
+			expect(view.button()).toBeNull();
+		} finally {
+			autoRefresh.atTop = false;
+		}
+	});
+});

@@ -7,6 +7,7 @@
 	import { Button } from "#lib/components/ui/button/index.ts";
 	import { scale } from "#lib/util/reduced-motion.ts";
 	import { attachPullInputs } from "./refresh/attach-inputs";
+	import { autoRefresh } from "./refresh/auto-refresh";
 	import { contentSlide, PacingTween } from "./refresh/content-slide";
 	import {
 		MAX_SLINGSHOT_TENSION,
@@ -267,25 +268,22 @@
 		restingButton.shown &&
 		!model.gestureActive &&
 		distance >= AT_BOUNDARY_PX;
-	// With a mouse, reaching the top refreshes on its own instead of
-	// offering the Refresh button: once per visit to the boundary.
-	const finePointer =
-		typeof matchMedia === "function"
-			? matchMedia("(hover: hover) and (pointer: fine)")
-			: null;
+	// See auto-refresh.ts: refresh at the top instead of offering the button.
 	let autoRefreshedAtBoundary = false;
 	$effect(() => {
 		if (distance >= AT_BOUNDARY_PX) autoRefreshedAtBoundary = false;
 	});
-	$effect(() => {
-		if (!shouldRevealRestingButton()) return;
-		if (finePointer?.matches && position === "top") {
-			if (autoRefreshedAtBoundary) return;
+	function revealsRestingButton(): boolean {
+		if (!shouldRevealRestingButton()) return false;
+		if (!autoRefresh.atTop || position !== "top") return true;
+		if (!autoRefreshedAtBoundary) {
 			autoRefreshedAtBoundary = true;
 			untrack(() => model.clickTrigger());
-			return;
 		}
-		restingButton.shown = true;
+		return false;
+	}
+	$effect(() => {
+		if (revealsRestingButton()) restingButton.shown = true;
 	});
 
 	$effect(() => () => restingButton.destroy());
@@ -303,7 +301,7 @@
 			revealPx: () => reveal.current,
 			setRevealPx: (px) => void reveal.set(px, { duration: 0 }),
 			setDistance: (px) => (distance = px),
-			shouldReveal: shouldRevealRestingButton,
+			shouldReveal: revealsRestingButton,
 			shouldConceal: shouldConcealRestingButton,
 		});
 	});

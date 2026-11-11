@@ -43,6 +43,31 @@
 	const taps = untrack(() => getTapsState(ourProfileId));
 	const hasUnseenTaps = $derived(taps.hasUnseen);
 
+	// One highlight behind the active tab, which slides to the next one
+	// instead of jumping. It follows the active link's box.
+	let links: HTMLDivElement | undefined = $state();
+	let indicator = $state<{ left: number; width: number } | null>(null);
+	function placeIndicator() {
+		const active = [...(links?.children ?? [])].find(
+			(child): child is HTMLAnchorElement =>
+				child instanceof HTMLAnchorElement &&
+				child.dataset.active === "true",
+		);
+		indicator = active
+			? { left: active.offsetLeft, width: active.offsetWidth }
+			: null;
+	}
+	$effect(() => {
+		void page.route.id;
+		placeIndicator();
+	});
+	$effect(() => {
+		if (!links) return;
+		const resize = new ResizeObserver(placeIndicator);
+		resize.observe(links);
+		return () => resize.disconnect();
+	});
+
 	function tabNavigation({
 		href,
 		landsOn = href,
@@ -81,11 +106,21 @@
 	{@attach bottomChrome}
 >
 	<div
+		bind:this={links}
 		class={[
 			tabsListVariants({ variant: "default" }),
-			"links shrink-0 [&>a>svg]:size-5!",
+			"links relative shrink-0 [&>a>svg]:size-5!",
 		]}
 	>
+		{#if indicator}
+			<span
+				aria-hidden="true"
+				data-slot="tab-indicator"
+				class="tab-indicator"
+				style:transform="translateX({indicator.left}px)"
+				style:width="{indicator.width}px"
+			></span>
+		{/if}
 		<a
 			href="/"
 			data-active={page.route.id === "/(protected)/(navbar)/(root)"}
@@ -170,6 +205,36 @@
 
 	.label {
 		@apply flex flex-col items-center;
+	}
+
+	.links a {
+		z-index: 1;
+	}
+
+	.tab-indicator {
+		position: absolute;
+		top: 0.25rem;
+		bottom: 0.25rem;
+		left: 0;
+		border-radius: 9999px;
+		background: rgb(255 255 255 / 0.12);
+		pointer-events: none;
+		/* lets a tab switch's view transition slide it between snapshots */
+		view-transition-name: og-tab-indicator;
+		transition:
+			transform 0.42s cubic-bezier(0.34, 1.3, 0.64, 1),
+			width 0.42s cubic-bezier(0.34, 1.3, 0.64, 1);
+	}
+
+	/* during a view transition the transition itself moves it */
+	:global(:root[data-tab-transition]) .tab-indicator {
+		transition: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.tab-indicator {
+			transition: none;
+		}
 	}
 
 	.label::after {
