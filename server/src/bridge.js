@@ -282,6 +282,78 @@
 		return remote(cmd, args);
 	}
 
+	// Viewport diagnostics for home-screen web apps: a three-finger tap (or
+	// ?og-debug in the address) toggles an overlay with the sizes iOS
+	// reports, the safe-area insets and the display mode. The choice is kept
+	// per app (a home-screen app doesn't share Safari's storage).
+	(function viewportDebug() {
+		const KEY = "og-debug";
+		const read = () => {
+			try {
+				return localStorage.getItem(KEY) === "1";
+			} catch {
+				return false;
+			}
+		};
+		const write = (on) => {
+			try {
+				if (on) localStorage.setItem(KEY, "1");
+				else localStorage.removeItem(KEY);
+			} catch {}
+		};
+		const flag = new URLSearchParams(location.search).get(KEY);
+		if (flag !== null) write(flag !== "off");
+		let enabled = read();
+
+		addEventListener(
+			"touchstart",
+			(event) => {
+				if (event.touches.length !== 3) return;
+				enabled = !enabled;
+				write(enabled);
+				if (enabled) show();
+				else document.getElementById("og-debug-box")?.remove();
+			},
+			{ passive: true },
+		);
+
+		const show = () => {
+			if (!enabled || !document.body) return;
+			let probe = document.getElementById("og-debug-probe");
+			if (!probe) {
+				probe = document.createElement("div");
+				probe.id = "og-debug-probe";
+				probe.style.cssText =
+					"position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);height:100dvh;width:0";
+				document.body.append(probe);
+			}
+			let box = document.getElementById("og-debug-box");
+			if (!box) {
+				box = document.createElement("pre");
+				box.id = "og-debug-box";
+				box.style.cssText =
+					"position:fixed;z-index:2147483647;left:8px;right:8px;top:50%;margin:0;padding:10px;border-radius:12px;background:rgba(0,0,0,.85);color:#0f0;font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;pointer-events:none";
+				document.body.append(box);
+			}
+			const p = getComputedStyle(probe);
+			const vv = window.visualViewport;
+			box.textContent = [
+				`standalone ${navigator.standalone} · display-mode ${matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser"}`,
+				`screen ${screen.width}x${screen.height} · dpr ${devicePixelRatio}`,
+				`inner ${innerWidth}x${innerHeight} · outer ${outerWidth}x${outerHeight}`,
+				`visualViewport ${vv ? `${Math.round(vv.width)}x${Math.round(vv.height)} @${Math.round(vv.offsetTop)}` : "-"}`,
+				`html client ${document.documentElement.clientHeight} · 100dvh ${probe.getBoundingClientRect().height}`,
+				`safe-area t${p.paddingTop} b${p.paddingBottom} l${p.paddingLeft} r${p.paddingRight}`,
+				`--safe-area-bottom ${getComputedStyle(document.documentElement).getPropertyValue("--safe-area-bottom")}`,
+				`ua ${navigator.userAgent.replace(/^.*?\(/, "(").slice(0, 80)}`,
+			].join("\n");
+		};
+		addEventListener("load", show);
+		addEventListener("resize", show);
+		setInterval(show, 2000);
+	})();
+
+
 	const iosVersion = /OS (\d+)[._](\d+)/.exec(navigator.userAgent);
 
 	Object.assign(window, {

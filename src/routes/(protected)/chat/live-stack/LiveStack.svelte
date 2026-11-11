@@ -93,10 +93,13 @@
 	onDestroy(() => stack.dispose());
 </script>
 
+<!-- The base pane (the conversation list) runs to the bottom edge, under the
+     home indicator like Browse; its list already pads itself clear of the
+     tab bar and the safe area (pb-nav-clear). -->
 <div
 	bind:this={basePane}
 	data-slot="live-stack-base"
-	class="fixed inset-0 flex flex-col bg-background pt-(--safe-area-top) pb-(--safe-area-bottom)"
+	class="fixed inset-0 flex flex-col bg-background pt-(--safe-area-top)"
 	style:z-index={STACK_Z.back}
 	data-covered={stack.covered || undefined}
 	inert={stack.sheetOpen}
