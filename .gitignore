@@ -25,3 +25,6 @@ keystore.properties
 /coverage
 /.updater-dev/
 /e2e/updater/.state/
+
+# og-server data (sessions, secrets) when run from the repo root
+/data
