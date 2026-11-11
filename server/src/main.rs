@@ -4,7 +4,8 @@
 //! - `OG_PASSWORD_HASH`: argon2 PHC hash, from `og-server hash-password`
 //! - `OG_TOTP_SECRET`: base32 authenticator secret, from `og-server totp-setup`;
 //!   lets a 6-digit code open the gate instead of the password
-//!   (at least one of the two is required)
+//!   (with neither, a secret is generated on first start, kept in the data
+//!   dir and shown once as a QR code in the console)
 //! - `OG_BIND`: listen address, default `127.0.0.1:8080`
 //! - `OG_STATIC_DIR`: SvelteKit build, default `./build`
 //! - `OG_DATA_DIR`: device identity and session, default `./data`
@@ -98,6 +99,48 @@ fn hash_password() -> Result<(), String> {
 		.map_err(|e| e.to_string())?;
 	println!("{hash}");
 	Ok(())
+}
+
+/// The gate's TOTP secret: `OG_TOTP_SECRET`, else the one kept in the data
+/// dir. With neither and no password either (a fresh install, e.g. from the
+/// Pterodactyl egg), one is generated, kept, and its QR code printed once to
+/// the console so it can be scanned straight from the panel.
+fn gate_totp_secret(data_dir: &std::path::Path, has_password: bool) -> Result<Option<String>, String> {
+	if let Some(secret) = std::env::var("OG_TOTP_SECRET").ok().filter(|v| !v.is_empty()) {
+		return Ok(Some(secret));
+	}
+	let file = data_dir.join("secrets").join("totp-secret");
+	if let Ok(secret) = std::fs::read_to_string(&file) {
+		let secret = secret.trim().to_owned();
+		if !secret.is_empty() {
+			return Ok(Some(secret));
+		}
+	}
+	if has_password {
+		return Ok(None);
+	}
+
+	let secret = totp::Totp::generate_secret();
+	let tmp = file.with_extension("tmp");
+	std::fs::write(&tmp, &secret).map_err(|e| format!("could not save the TOTP secret: {e}"))?;
+	#[cfg(unix)]
+	{
+		use std::os::unix::fs::PermissionsExt;
+		let _ = std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600));
+	}
+	std::fs::rename(&tmp, &file).map_err(|e| format!("could not save the TOTP secret: {e}"))?;
+
+	let uri = totp::Totp::provisioning_uri(&secret, "server");
+	println!("{}", totp::qr_for_terminal(&uri)?);
+	println!("First start: the gate opens with an authenticator code.");
+	println!("Scan this QR code with your authenticator app (iOS Passwords:");
+	println!("+ > your site > Set up verification code), or enter this key:");
+	println!();
+	println!("    {secret}");
+	println!();
+	println!("It is kept in {} and won't be shown again.", file.display());
+	println!("Clear the console log afterwards if others can read it.");
+	Ok(Some(secret))
 }
 
 /// Prints a new TOTP secret with its QR code, to scan in an authenticator
@@ -239,11 +282,6 @@ async fn main() -> Result<(), String> {
 		_ => {}
 	}
 
-	let password_hash = std::env::var("OG_PASSWORD_HASH").ok().filter(|v| !v.is_empty());
-	let totp = match std::env::var("OG_TOTP_SECRET").ok().filter(|v| !v.is_empty()) {
-		Some(secret) => Some(totp::Totp::from_base32(&secret)?),
-		None => None,
-	};
 	let bind: SocketAddr = std::env::var("OG_BIND")
 		.unwrap_or_else(|_| "127.0.0.1:8080".into())
 		.parse()
@@ -252,6 +290,12 @@ async fn main() -> Result<(), String> {
 	let data_dir = PathBuf::from(std::env::var("OG_DATA_DIR").unwrap_or_else(|_| "data".into()));
 
 	let store = SecretStore::open(&data_dir).map_err(|e| format!("OG_DATA_DIR: {e}"))?;
+	let password_hash = std::env::var("OG_PASSWORD_HASH").ok().filter(|v| !v.is_empty());
+	let totp_secret = gate_totp_secret(&data_dir, password_hash.is_some())?;
+	let totp = match totp_secret {
+		Some(secret) => Some(totp::Totp::from_base32(&secret)?),
+		None => None,
+	};
 	let gate = Gate::new(
 		GateConfig {
 			password_hash,
