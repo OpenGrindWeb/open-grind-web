@@ -28,7 +28,10 @@ use crate::totp::{Totp, Verdict};
 use crate::AppState;
 
 pub const COOKIE: &str = "og_session";
+/// Sliding: every use pushes the expiry back (at most once a day, see
+/// `RENEW_AFTER`), so a device in regular use stays signed in.
 const SESSION_TTL: Duration = Duration::from_secs(30 * 24 * 3600);
+const RENEW_AFTER: Duration = Duration::from_secs(24 * 3600);
 const MAX_FAILURES: u32 = 5;
 const LOCKOUT: Duration = Duration::from_secs(15 * 60);
 /// Header the front shim sends on every IPC call. A cross-site HTML form
@@ -94,11 +97,25 @@ impl Gate {
 		Sha256::digest(token.as_bytes()).into()
 	}
 
+	#[cfg(test)]
 	fn is_valid(&self, token: &str) -> bool {
+		self.touch(token).is_some()
+	}
+
+	/// `None` for an unknown or expired token; otherwise whether the expiry
+	/// was just pushed back (the caller then refreshes the cookie's Max-Age).
+	fn touch(&self, token: &str) -> Option<bool> {
 		let mut sessions = self.sessions.lock().unwrap();
 		let now = now_unix();
 		sessions.retain(|_, expiry| *expiry > now);
-		sessions.contains_key(&Self::digest(token))
+		let expiry = sessions.get_mut(&Self::digest(token))?;
+		let renewed = now + SESSION_TTL.as_secs();
+		if renewed - *expiry < RENEW_AFTER.as_secs() {
+			return Some(false);
+		}
+		*expiry = renewed;
+		self.persist(&sessions);
+		Some(true)
 	}
 
 	fn open_session(&self) -> String {
@@ -193,10 +210,16 @@ impl Gate {
 		peer.ip()
 	}
 
+	/// SameSite=Lax, not Strict: iOS drops Strict cookies when it relaunches
+	/// a home-screen web app it evicted in the background, which looked like
+	/// being signed out after a few minutes away. Cross-site requests still
+	/// can't use the session: Lax cookies only ride top-level GET
+	/// navigations (never WebSocket handshakes or fetches), and every API
+	/// call needs a POST with the `x-og-ipc` header.
 	fn cookie(&self, value: &str, max_age: u64) -> HeaderValue {
 		let secure = if self.config.secure_cookie { "; Secure" } else { "" };
 		HeaderValue::from_str(&format!(
-			"{COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
+			"{COOKIE}={value}; Path=/; HttpOnly; SameSite=Lax; Max-Age={max_age}{secure}"
 		))
 		.expect("cookie header")
 	}
@@ -336,7 +359,9 @@ pub async fn require_session(
 		return next.run(request).await;
 	}
 
-	let authed = session_cookie(request.headers()).is_some_and(|t| app.gate.is_valid(t));
+	let token = session_cookie(request.headers()).map(str::to_owned);
+	let session = token.as_deref().and_then(|t| app.gate.touch(t));
+	let authed = session.is_some();
 	let is_post_api = path.starts_with("/ipc/") || path == "/stage";
 	let is_api = is_post_api || path == "/events" || path.starts_with("/media/");
 
@@ -355,8 +380,17 @@ pub async fn require_session(
 		return StatusCode::FORBIDDEN.into_response();
 	}
 
-	next.run(request).await
+	let mut response = next.run(request).await;
+	if session == Some(true) {
+		if let Some(token) = token {
+			response
+				.headers_mut()
+				.append(header::SET_COOKIE, app.gate.cookie(&token, SESSION_TTL.as_secs()));
+		}
+	}
+	response
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -401,6 +435,20 @@ mod tests {
 		restarted.close_session(&token);
 		assert!(!Gate::new(config(), Some(file.clone())).unwrap().is_valid(&token));
 		let _ = std::fs::remove_file(file);
+	}
+
+	#[test]
+	fn use_pushes_the_expiry_back_at_most_once_a_day() {
+		let gate = gate();
+		let token = gate.open_session();
+		assert_eq!(gate.touch(&token), Some(false));
+		// Pretend the session was opened two days ago.
+		for expiry in gate.sessions.lock().unwrap().values_mut() {
+			*expiry -= 2 * 24 * 3600;
+		}
+		assert_eq!(gate.touch(&token), Some(true));
+		assert_eq!(gate.touch(&token), Some(false));
+		assert_eq!(gate.touch("forged"), None);
 	}
 
 	#[test]
