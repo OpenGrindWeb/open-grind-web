@@ -15,6 +15,7 @@ mod gate;
 mod ipc;
 mod media;
 mod photo;
+mod pwa;
 mod spa;
 mod store;
 mod upload;
@@ -148,6 +149,10 @@ pub fn router(state: AppState, static_dir: PathBuf) -> Router {
 		.route("/", spa_index(&state.index))
 		.route("/index.html", spa_index(&state.index))
 		.route("/og-bridge.js", get(spa::bridge))
+		.route("/og-theme.css", get(spa::theme))
+		.route("/manifest.webmanifest", get(pwa::manifest))
+		.route("/og-icons/{name}", get(pwa::icon))
+		.route("/favicon.ico", get(pwa::favicon))
 		.route("/gate", get(gate::login_page))
 		.route("/gate/login", post(gate::login))
 		.route("/gate/logout", post(gate::logout))
@@ -206,13 +211,15 @@ async fn main() -> Result<(), String> {
 	let static_dir = PathBuf::from(std::env::var("OG_STATIC_DIR").unwrap_or_else(|_| "build".into()));
 	let data_dir = PathBuf::from(std::env::var("OG_DATA_DIR").unwrap_or_else(|_| "data".into()));
 
-	let gate = Gate::new(GateConfig {
-		password_hash,
-		secure_cookie: !env_flag("OG_INSECURE_COOKIE"),
-		trust_proxy: env_flag("OG_TRUST_PROXY"),
-	})?;
-
 	let store = SecretStore::open(&data_dir).map_err(|e| format!("OG_DATA_DIR: {e}"))?;
+	let gate = Gate::new(
+		GateConfig {
+			password_hash,
+			secure_cookie: !env_flag("OG_INSECURE_COOKIE"),
+			trust_proxy: env_flag("OG_TRUST_PROXY"),
+		},
+		Some(data_dir.join("secrets").join("gate-sessions.msgpack")),
+	)?;
 	let device = store.device_or_create();
 	let credentials = store
 		.load::<grindr::Credentials>(store::SESSION)

@@ -13,6 +13,10 @@ use axum::response::{IntoResponse, Response};
 
 const BRIDGE_JS: &str = include_str!("bridge.js");
 const BRIDGE_TAG: &str = r#"<script src="/og-bridge.js"></script>"#;
+const THEME_CSS: &str = include_str!("theme.css");
+/// Unlayered, so it wins over Tailwind's `@layer` rules regardless of order;
+/// placed last in `<head>` anyway.
+const THEME_TAG: &str = r#"<link rel="stylesheet" href="/og-theme.css">"#;
 
 #[derive(Clone)]
 pub struct Index(Arc<Option<String>>);
@@ -44,10 +48,26 @@ pub fn inject(html: &str) -> String {
 	let after_head = html
 		.find("<head")
 		.and_then(|start| html[start..].find('>').map(|end| start + end + 1));
-	match after_head {
-		Some(at) => format!("{}{BRIDGE_TAG}{}", &html[..at], &html[at..]),
-		None => format!("{BRIDGE_TAG}{html}"),
+	let head = format!("{BRIDGE_TAG}{}", crate::pwa::HEAD_TAGS);
+	let html = match after_head {
+		Some(at) => format!("{}{head}{}", &html[..at], &html[at..]),
+		None => format!("{head}{html}"),
+	};
+	match html.find("</head>") {
+		Some(at) => format!("{}{THEME_TAG}{}", &html[..at], &html[at..]),
+		None => html,
 	}
+}
+
+pub async fn theme() -> Response {
+	(
+		[
+			(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8")),
+			(header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
+		],
+		THEME_CSS,
+	)
+		.into_response()
 }
 
 pub async fn bridge() -> Response {
@@ -73,5 +93,8 @@ mod tests {
 		assert!(bridge > out.find("<head").unwrap());
 		assert!(bridge < out.find("<meta").unwrap());
 		assert!(bridge < out.find("type=\"module\"").unwrap());
+		assert!(out.contains("rel=\"manifest\""));
+		assert!(out.find(THEME_TAG).unwrap() < out.find("</head>").unwrap());
+		assert!(out.find(THEME_TAG).unwrap() > out.find("type=\"module\"").unwrap());
 	}
 }

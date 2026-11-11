@@ -8,8 +8,9 @@
 
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use argon2::password_hash::{PasswordHash, PasswordVerifier};
 use argon2::Argon2;
@@ -47,19 +48,33 @@ struct Failures {
 	locked_until: Option<Instant>,
 }
 
+type Sessions = HashMap<[u8; 32], u64>;
+
 pub struct Gate {
 	config: GateConfig,
-	sessions: Mutex<HashMap<[u8; 32], Instant>>,
+	/// SHA-256 of each session token -> expiry (unix seconds).
+	sessions: Mutex<Sessions>,
+	/// Where sessions survive restarts (`None` in tests).
+	sessions_file: Option<PathBuf>,
 	failures: Mutex<HashMap<IpAddr, Failures>>,
 }
 
+fn now_unix() -> u64 {
+	SystemTime::now()
+		.duration_since(UNIX_EPOCH)
+		.map(|d| d.as_secs())
+		.unwrap_or(0)
+}
+
 impl Gate {
-	pub fn new(config: GateConfig) -> Result<Arc<Self>, String> {
+	pub fn new(config: GateConfig, sessions_file: Option<PathBuf>) -> Result<Arc<Self>, String> {
 		PasswordHash::new(&config.password_hash)
 			.map_err(|e| format!("OG_PASSWORD_HASH is not a valid PHC hash: {e}"))?;
+		let sessions = sessions_file.as_deref().map(load_sessions).unwrap_or_default();
 		Ok(Arc::new(Self {
 			config,
-			sessions: Mutex::default(),
+			sessions: Mutex::new(sessions),
+			sessions_file,
 			failures: Mutex::default(),
 		}))
 	}
@@ -70,7 +85,7 @@ impl Gate {
 
 	fn is_valid(&self, token: &str) -> bool {
 		let mut sessions = self.sessions.lock().unwrap();
-		let now = Instant::now();
+		let now = now_unix();
 		sessions.retain(|_, expiry| *expiry > now);
 		sessions.contains_key(&Self::digest(token))
 	}
@@ -79,15 +94,39 @@ impl Gate {
 		let mut bytes = [0u8; 32];
 		getrandom::fill(&mut bytes).expect("OS random source");
 		let token = URL_SAFE_NO_PAD.encode(bytes);
-		self.sessions
-			.lock()
-			.unwrap()
-			.insert(Self::digest(&token), Instant::now() + SESSION_TTL);
+		let mut sessions = self.sessions.lock().unwrap();
+		sessions.insert(Self::digest(&token), now_unix() + SESSION_TTL.as_secs());
+		self.persist(&sessions);
 		token
 	}
 
 	fn close_session(&self, token: &str) {
-		self.sessions.lock().unwrap().remove(&Self::digest(token));
+		let mut sessions = self.sessions.lock().unwrap();
+		sessions.remove(&Self::digest(token));
+		self.persist(&sessions);
+	}
+
+	/// Only digests are written, never the tokens themselves: reading the
+	/// file doesn't let anyone in.
+	fn persist(&self, sessions: &Sessions) {
+		let Some(path) = &self.sessions_file else { return };
+		let now = now_unix();
+		let live: Vec<([u8; 32], u64)> = sessions
+			.iter()
+			.filter(|(_, expiry)| **expiry > now)
+			.map(|(digest, expiry)| (*digest, *expiry))
+			.collect();
+		let result = rmp_serde::encode::to_vec(&live)
+			.map_err(|e| e.to_string())
+			.and_then(|bytes| {
+				let tmp = path.with_extension("tmp");
+				std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+				restrict(&tmp);
+				std::fs::rename(&tmp, path).map_err(|e| e.to_string())
+			});
+		if let Err(e) = result {
+			tracing::error!("[gate] could not persist sessions: {e}");
+		}
 	}
 
 	fn locked(&self, ip: IpAddr) -> bool {
@@ -138,6 +177,28 @@ impl Gate {
 		.expect("cookie header")
 	}
 }
+
+fn load_sessions(path: &Path) -> Sessions {
+	let Ok(bytes) = std::fs::read(path) else {
+		return Sessions::new();
+	};
+	let now = now_unix();
+	rmp_serde::from_slice::<Vec<([u8; 32], u64)>>(&bytes)
+		.map(|live| live.into_iter().filter(|(_, expiry)| *expiry > now).collect())
+		.unwrap_or_else(|e| {
+			tracing::warn!("[gate] ignoring unreadable sessions file: {e}");
+			Sessions::new()
+		})
+}
+
+#[cfg(unix)]
+fn restrict(path: &Path) {
+	use std::os::unix::fs::PermissionsExt;
+	let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+}
+
+#[cfg(not(unix))]
+fn restrict(_path: &Path) {}
 
 fn session_cookie(headers: &HeaderMap) -> Option<&str> {
 	headers
@@ -213,7 +274,7 @@ pub async fn require_session(
 	next: Next,
 ) -> Response {
 	let path = request.uri().path();
-	if path == "/gate" || path.starts_with("/gate/") {
+	if path == "/gate" || path.starts_with("/gate/") || crate::pwa::is_public(path) {
 		return next.run(request).await;
 	}
 
@@ -250,12 +311,36 @@ mod tests {
 			.hash_password(b"secret", &salt)
 			.unwrap()
 			.to_string();
-		Gate::new(GateConfig {
-			password_hash: hash,
-			secure_cookie: true,
-			trust_proxy: true,
-		})
+		Gate::new(
+			GateConfig {
+				password_hash: hash,
+				secure_cookie: true,
+				trust_proxy: true,
+			},
+			None,
+		)
 		.unwrap()
+	}
+
+	#[test]
+	fn sessions_survive_a_restart_and_only_digests_hit_the_disk() {
+		let file = std::env::temp_dir().join(format!("og-gate-{}.msgpack", std::process::id()));
+		let hash = gate().config.password_hash.clone();
+		let config = || GateConfig {
+			password_hash: hash.clone(),
+			secure_cookie: true,
+			trust_proxy: false,
+		};
+		let first = Gate::new(config(), Some(file.clone())).unwrap();
+		let token = first.open_session();
+		let on_disk = std::fs::read(&file).unwrap();
+		assert!(!on_disk.windows(token.len()).any(|w| w == token.as_bytes()));
+
+		let restarted = Gate::new(config(), Some(file.clone())).unwrap();
+		assert!(restarted.is_valid(&token));
+		restarted.close_session(&token);
+		assert!(!Gate::new(config(), Some(file.clone())).unwrap().is_valid(&token));
+		let _ = std::fs::remove_file(file);
 	}
 
 	#[test]
