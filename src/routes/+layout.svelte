@@ -28,7 +28,7 @@
 	import { blockZoom } from "#lib/platform/block-zoom.ts";
 	import { trackHoverPointer } from "#lib/platform/hover-pointer.ts";
 	import { keepLinksInApp } from "#lib/platform/in-app-links.ts";
-	import { isAndroidPlatform } from "#lib/platform/os.ts";
+	import { isAndroidPlatform, isWebBuild } from "#lib/platform/os.ts";
 	import { installScrollGestureBridge } from "#lib/platform/scroll-gesture.ts";
 	import { reconcileNotifications } from "#lib/push/notifications.svelte.ts";
 	import { startPushWatch } from "#lib/push/watch.ts";
@@ -174,6 +174,9 @@
 	]}
 	style:height="var(--safe-area-top)"
 ></div>
+<!-- The web app's tab bar floats over content running to the bottom edge,
+     like iOS: no dimmed strip over the home indicator there. -->
+{#if !isWebBuild() || PUBLIC_TEST_INSETS}
 <div
 	data-slot="safe-area-strip"
 	class={[
@@ -185,6 +188,7 @@
 	]}
 	style:height="var(--safe-area-bottom)"
 ></div>
+{/if}
 <FrostFilters />
 <IconContext values={{ "aria-hidden": true }}>
 	<div data-slot="toast-host" class="contents">
