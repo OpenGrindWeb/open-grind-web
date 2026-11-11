@@ -125,14 +125,25 @@ nav[aria-label="Main"] {
 	display: none !important;
 }
 
-/* iOS 18 navigation bar: chrome material, hairline at the bottom */
+/* Top bars: plain black, no backdrop blur, hairline at the bottom */
 .pblur[data-screen-chrome="top"],
 .pblur[data-fixed-header]:not([data-screen-chrome="bottom"]) {
-	background-color: var(--mat-chrome) !important;
-	-webkit-backdrop-filter: var(--mat-blur) !important;
-	backdrop-filter: var(--mat-blur) !important;
-	box-shadow: inset 0 -0.5px 0 rgb(255 255 255 / 0.15);
-	padding-bottom: 6px;
+	background-color: var(--ios-bg) !important;
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+	box-shadow: inset 0 -0.5px 0 var(--ios-separator);
+}
+
+/* Chips on a plain bar don't need their own blur either */
+[data-slot="quick-filters-row"] [data-slot="button"].rounded-4xl:not(.bg-primary),
+[data-slot="quick-filters-row"] [data-slot="toggle-group"] {
+	-webkit-backdrop-filter: none !important;
+	backdrop-filter: none !important;
+	background-color: var(--ios-fill-tertiary) !important;
+}
+
+[data-slot="quick-filters-row"] [data-slot="button"].rounded-4xl[data-active="true"] {
+	background-color: var(--ios-tint) !important;
 }
 
 nav[aria-label="Main"] .links {

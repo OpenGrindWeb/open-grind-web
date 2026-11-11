@@ -18,6 +18,24 @@ const THEME_CSS: &str = include_str!("theme.css");
 /// placed last in `<head>` anyway.
 const THEME_TAG: &str = r#"<link rel="stylesheet" href="/og-theme.css">"#;
 
+/// Development only: `OG_DEV_ASSETS=<server/src dir>` re-reads the theme from
+/// disk on every request, to tune it without rebuilding.
+fn dev_asset(name: &str) -> Option<String> {
+	let dir = std::env::var_os("OG_DEV_ASSETS")?;
+	std::fs::read_to_string(Path::new(&dir).join(name)).ok()
+}
+
+fn asset(content_type: &'static str, body: String) -> Response {
+	(
+		[
+			(header::CONTENT_TYPE, HeaderValue::from_static(content_type)),
+			(header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
+		],
+		body,
+	)
+		.into_response()
+}
+
 #[derive(Clone)]
 pub struct Index(Arc<Option<String>>);
 
@@ -60,24 +78,12 @@ pub fn inject(html: &str) -> String {
 }
 
 pub async fn theme() -> Response {
-	// Development only: OG_DEV_THEME=<path> re-reads the stylesheet on every
-	// request so it can be tuned without rebuilding.
-	if let Some(css) = std::env::var_os("OG_DEV_THEME").and_then(|path| std::fs::read_to_string(path).ok()) {
-		return (
-			[(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8"))],
-			css,
-		)
-			.into_response();
-	}
-	(
-		[
-			(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8")),
-			(header::CACHE_CONTROL, HeaderValue::from_static("no-cache")),
-		],
-		THEME_CSS,
+	asset(
+		"text/css; charset=utf-8",
+		dev_asset("theme.css").unwrap_or_else(|| THEME_CSS.to_owned()),
 	)
-		.into_response()
 }
+
 
 pub async fn bridge() -> Response {
 	(
