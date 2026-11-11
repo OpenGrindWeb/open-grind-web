@@ -67,9 +67,17 @@ and set:
 | `OG_TRUST_PROXY` | number of reverse proxies in front (usually `1`) |
 | `OG_PASSWORD_HASH`, `OG_TOTP_SECRET` | optional, see above |
 
-Install (it builds the front and the server, about a minute with a warm
-cache), start, scan the QR code from the console, and point your reverse
-proxy at the allocated port. **Reinstall** updates the app; `data/` is kept.
+Give the server **at least 4 GB of disk**: the build (node_modules, Rust
+target) happens on the server's volume, since Wings mounts the installer's
+`/tmp` as a small tmpfs, and is cleaned up afterwards (~30 MB stays). The
+Rust build also wants 2-3 GB of RAM: raise `docker.installer_limits.memory`
+in Wings' `config.yml` if the installer is capped lower.
+
+Install (it builds the front and the server, a few minutes the first time),
+start, scan the QR code from the console, and point your reverse proxy at
+the allocated port. **Reinstall** updates the app; `data/` is kept. The egg
+only bootstraps: the install script itself lives in the repository
+(`server/pterodactyl/install.sh`), so updates to it need no new import.
 
 ### Docker
 
