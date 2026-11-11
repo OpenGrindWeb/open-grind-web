@@ -43,7 +43,9 @@ pub struct GateConfig {
 	/// Authenticator codes (TOTP), accepted instead of the password.
 	pub totp: Option<Totp>,
 	pub secure_cookie: bool,
-	pub trust_proxy: bool,
+	/// Reverse proxies in front of the server (0: none). With n, the client
+	/// is the n-th `X-Forwarded-For` entry from the right.
+	pub trusted_proxies: usize,
 }
 
 #[derive(Default)]
@@ -163,14 +165,27 @@ impl Gate {
 		}
 	}
 
+	/// The client's IP, for the lockout. Behind trusted proxies it comes from
+	/// `X-Forwarded-For`, but only when the request really arrives from a
+	/// proxy on this machine or a private network: a client reaching the port
+	/// directly could otherwise send a fresh made-up IP with every guess.
 	fn client_ip(&self, headers: &HeaderMap, peer: SocketAddr) -> IpAddr {
-		if self.config.trust_proxy {
-			// Right-most entry is the one appended by our own reverse proxy.
-			if let Some(ip) = headers
-				.get("x-forwarded-for")
-				.and_then(|v| v.to_str().ok())
-				.and_then(|v| v.rsplit(',').next())
-				.and_then(|v| v.trim().parse().ok())
+		let hops = self.config.trusted_proxies;
+		if hops > 0 && is_local(peer.ip()) {
+			let forwarded: Vec<&str> = headers
+				.get_all("x-forwarded-for")
+				.iter()
+				.filter_map(|v| v.to_str().ok())
+				.flat_map(|v| v.split(','))
+				.map(str::trim)
+				.filter(|v| !v.is_empty())
+				.collect();
+			// Each trusted proxy appends the address it received from, so
+			// the client is `hops` entries from the right.
+			if let Some(ip) = forwarded
+				.len()
+				.checked_sub(hops)
+				.and_then(|index| forwarded[index].parse().ok())
 			{
 				return ip;
 			}
@@ -184,6 +199,20 @@ impl Gate {
 			"{COOKIE}={value}; Path=/; HttpOnly; SameSite=Strict; Max-Age={max_age}{secure}"
 		))
 		.expect("cookie header")
+	}
+}
+
+/// Loopback, private (RFC 1918 / unique local) or link-local: where a
+/// reverse proxy of ours can be.
+fn is_local(ip: IpAddr) -> bool {
+	match ip {
+		IpAddr::V4(v4) => v4.is_loopback() || v4.is_private() || v4.is_link_local(),
+		IpAddr::V6(v6) => {
+			if let Some(v4) = v6.to_ipv4_mapped() {
+				return is_local(IpAddr::V4(v4));
+			}
+			v6.is_loopback() || (v6.segments()[0] & 0xfe00) == 0xfc00 || (v6.segments()[0] & 0xffc0) == 0xfe80
+		}
 	}
 }
 
@@ -345,7 +374,7 @@ mod tests {
 				password_hash: Some(hash),
 				totp: None,
 				secure_cookie: true,
-				trust_proxy: true,
+				trusted_proxies: 1,
 			},
 			None,
 		)
@@ -360,7 +389,7 @@ mod tests {
 			password_hash: hash.clone(),
 			totp: None,
 			secure_cookie: true,
-			trust_proxy: false,
+			trusted_proxies: 0,
 		};
 		let first = Gate::new(config(), Some(file.clone())).unwrap();
 		let token = first.open_session();
@@ -407,6 +436,25 @@ mod tests {
 			gate.client_ip(&headers, peer),
 			"198.51.100.4".parse::<IpAddr>().unwrap()
 		);
+	}
+
+	#[test]
+	fn forwarded_ip_counts_proxy_hops_and_needs_a_local_peer() {
+		let mut gate = Arc::into_inner(gate()).unwrap();
+		gate.config.trusted_proxies = 2;
+		let mut headers = HeaderMap::new();
+		headers.insert("x-forwarded-for", "6.6.6.6, 198.51.100.4, 10.0.0.2".parse().unwrap());
+		let lan: SocketAddr = "192.168.1.20:443".parse().unwrap();
+		assert_eq!(gate.client_ip(&headers, lan), "198.51.100.4".parse::<IpAddr>().unwrap());
+
+		// straight from the internet: the header is the client's own claim
+		let public: SocketAddr = "203.0.113.9:5000".parse().unwrap();
+		assert_eq!(gate.client_ip(&headers, public), public.ip());
+
+		// fewer entries than proxies: fall back to the peer
+		let mut short = HeaderMap::new();
+		short.insert("x-forwarded-for", "10.0.0.2".parse().unwrap());
+		assert_eq!(gate.client_ip(&short, lan), lan.ip());
 	}
 
 	#[test]

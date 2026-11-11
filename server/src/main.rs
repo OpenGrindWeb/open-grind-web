@@ -8,7 +8,9 @@
 //! - `OG_BIND`: listen address, default `127.0.0.1:8080`
 //! - `OG_STATIC_DIR`: SvelteKit build, default `./build`
 //! - `OG_DATA_DIR`: device identity and session, default `./data`
-//! - `OG_TRUST_PROXY=1`: take the client IP from `X-Forwarded-For` (behind Caddy)
+//! - `OG_TRUST_PROXY=<n>`: n reverse proxies in front (usually 1); the client
+//!   IP for the lockout comes from `X-Forwarded-For`, trusted only when the
+//!   request arrives from a loopback or private address
 //! - `OG_INSECURE_COOKIE=1`: drop the `Secure` cookie flag (local HTTP testing only)
 
 mod auth;
@@ -62,6 +64,18 @@ pub struct AppState {
 impl AppState {
 	pub fn client(&self) -> Result<grindr::GrindrClient, AppError> {
 		self.client.clone().ok_or(AppError::NotInitialized)
+	}
+}
+
+/// `OG_TRUST_PROXY`: how many reverse proxies sit in front (a number;
+/// `true`/`yes` mean 1; unset or 0 means none).
+fn trusted_proxies() -> Result<usize, String> {
+	match std::env::var("OG_TRUST_PROXY").as_deref() {
+		Err(_) | Ok("") | Ok("0") | Ok("false") | Ok("no") => Ok(0),
+		Ok("true" | "yes") => Ok(1),
+		Ok(n) => n
+			.parse()
+			.map_err(|_| format!("OG_TRUST_PROXY must be a number of proxies, got {n:?}")),
 	}
 }
 
@@ -243,7 +257,7 @@ async fn main() -> Result<(), String> {
 			password_hash,
 			totp,
 			secure_cookie: !env_flag("OG_INSECURE_COOKIE"),
-			trust_proxy: env_flag("OG_TRUST_PROXY"),
+			trusted_proxies: trusted_proxies()?,
 		},
 		Some(data_dir.join("secrets").join("gate-sessions.msgpack")),
 	)?;
