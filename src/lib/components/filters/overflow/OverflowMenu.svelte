@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import DotsThreeCircleIcon from "phosphor-svelte/lib/DotsThreeCircleIcon";
 
 	import { Button } from "#lib/components/ui/button/index.ts";
@@ -17,7 +18,7 @@
 				<Button
 					variant="secondary"
 					size="icon"
-					aria-label="More filters"
+					aria-label={t("filters.more")}
 					data-slot="overflow-more"
 					class={[className, "shrink-0 rounded-full"]}
 					{...props}

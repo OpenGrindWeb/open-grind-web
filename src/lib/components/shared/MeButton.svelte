@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { untrack } from "svelte";
 
 	import { getProfile, onProfileEdit } from "#lib/api/users/profiles.ts";
@@ -26,7 +27,7 @@
 
 <a
 	href="/settings"
-	aria-label="Me"
+	aria-label={t("nav.me")}
 	data-slot="me-button"
 	onclick={tabNavigation({ href: "/settings" })}
 	class="flex size-9 shrink-0 rounded-full border border-border bg-muted p-0.5 transition-opacity active:opacity-60 motion-reduce:transition-none"

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { onNavigate } from "$app/navigation";
 	import { onDestroy, tick, untrack } from "svelte";
 
@@ -156,7 +157,7 @@
 				})}
 		/>
 		<MessageTextInput
-			placeholder="Say something..."
+			placeholder={t("chat.placeholder")}
 			padding="pr-10 pl-10"
 			{disabled}
 			bind:value={textContent}

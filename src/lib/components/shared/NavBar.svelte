@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { page } from "$app/state";
 	import ChatCircleIcon from "phosphor-svelte/lib/ChatCircleIcon";
 	import DotsNineIcon from "phosphor-svelte/lib/DotsNineIcon";
@@ -86,7 +87,7 @@
 			onclick={tabNavigation({ href: "/" })}
 		>
 			<DotsNineIcon weight="fill" />
-			{@render label("Browse")}
+			{@render label(t("nav.browse"))}
 		</a>
 		<a
 			href="/right-now"
@@ -94,7 +95,7 @@
 			onclick={tabNavigation({ href: "/right-now" })}
 		>
 			<DropIcon weight="fill" />
-			{@render label("Right Now")}
+			{@render label(t("nav.rightNow"))}
 		</a>
 		<a
 			href="/interest"
@@ -107,7 +108,7 @@
 			})}
 		>
 			<FireIcon weight="fill" />
-			{@render label("Interest")}
+			{@render label(t("nav.interest"))}
 			{#if hasUnseenTaps}
 				<Badge
 					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"
@@ -120,7 +121,7 @@
 			onclick={tabNavigation({ href: "/chat" })}
 		>
 			<ChatCircleIcon weight="fill" />
-			{@render label("Inbox")}
+			{@render label(t("nav.inbox"))}
 			{#if hasUnread}
 				<Badge
 					class="absolute inset-e-2 top-1 size-2.5 rounded-full p-0"

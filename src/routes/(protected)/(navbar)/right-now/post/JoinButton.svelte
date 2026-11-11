@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { Button } from "#lib/components/ui/button/index.ts";
 	import type { RightNowPostState } from "../right-now-post-state.svelte";
 	import { formatTimeLeft } from "./time-left";
@@ -32,9 +33,9 @@
 		Math.min(1, Math.max(0, post.timeLeftMs / lifetimeMs)),
 	);
 	const joinLabel = $derived.by(() => {
-		if (post.freePostsLeft === "unlimited") return "Join · Free";
-		if (post.freePostsLeft === null) return "Join";
-		return `Join · ${post.freePostsLeft} free`;
+		if (post.freePostsLeft === "unlimited") return t("rightNow.joinFree");
+		if (post.freePostsLeft === null) return t("rightNow.join");
+		return t("rightNow.joinCount", { count: post.freePostsLeft });
 	});
 	const runningLabel = $derived(
 		off

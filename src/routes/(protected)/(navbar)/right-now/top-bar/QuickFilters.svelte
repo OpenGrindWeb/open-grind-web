@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import FunnelSimpleIcon from "phosphor-svelte/lib/FunnelSimpleIcon";
 
 	import AgeQuickFilter from "#lib/components/filters/age/AgeQuickFilter.svelte";
@@ -9,19 +10,22 @@
 
 	let { filters }: { filters: RightNowFeedFiltersState } = $props();
 
-	const sortLabels = { NEWEST: "Newest", DISTANCE: "Distance" };
+	const sortLabels = {
+		NEWEST: "filters.newest",
+		DISTANCE: "filters.distance",
+	} as const;
 
 	let openFilters = $state({ age: false, position: false, hosting: false });
 
 	const { sort, ageEnabled, positionEnabled, hostingEnabled } = $derived(
 		filters.current,
 	);
-	const sortLabel = $derived(sortLabels[sort]);
+	const sortLabel = $derived(t(sortLabels[sort]));
 </script>
 
 <QuickFilterButton
 	active
-	label="Sort: {sortLabel}"
+	label={t("filters.sort", { sort: sortLabel })}
 	onclick={() =>
 		filters.set({ sort: sort === "NEWEST" ? "DISTANCE" : "NEWEST" })}
 >
@@ -29,19 +33,19 @@
 	{sortLabel}
 </QuickFilterButton>
 <QuickFilterButton active={ageEnabled} onclick={() => (openFilters.age = true)}>
-	Age
+	{t("filters.age")}
 </QuickFilterButton>
 <QuickFilterButton
 	active={positionEnabled}
 	onclick={() => (openFilters.position = true)}
 >
-	Position
+	{t("filters.position")}
 </QuickFilterButton>
 <QuickFilterButton
 	active={hostingEnabled}
 	onclick={() => (openFilters.hosting = true)}
 >
-	Hosting
+	{t("filters.hosting")}
 </QuickFilterButton>
 
 <AgeQuickFilter bind:open={openFilters.age} {filters} />

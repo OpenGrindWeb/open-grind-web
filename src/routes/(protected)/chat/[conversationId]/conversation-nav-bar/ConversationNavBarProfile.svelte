@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import DisplayName from "#lib/components/profile/DisplayName.svelte";
 	import DistanceFormatted from "#lib/components/profile/DistanceFormatted.svelte";
 	import ProfileStatusIndicator from "#lib/components/profile/ProfileStatusIndicator.svelte";
@@ -37,7 +38,7 @@
 			</Card.Title>
 			{#if profile.distance === null}
 				<Card.Description class="truncate text-[11px]"
-					>Distance unknown</Card.Description
+					>{t("chat.distanceUnknown")}</Card.Description
 				>
 			{:else}
 				<Card.Description class="truncate text-[11px]">

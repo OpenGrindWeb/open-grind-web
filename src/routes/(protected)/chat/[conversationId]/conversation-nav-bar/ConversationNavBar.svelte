@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import CaretLeftIcon from "phosphor-svelte/lib/CaretLeftIcon";
 
 	import BackLink from "#lib/components/navigation/BackLink.svelte";
@@ -22,7 +23,7 @@
 >
 	<BackLink
 		href="/chat"
-		label="Back to chats"
+		label={t("chat.back")}
 		class="flex h-full w-14 shrink-0 items-center justify-center text-primary"
 	>
 		<CaretLeftIcon size={28} weight="bold" />

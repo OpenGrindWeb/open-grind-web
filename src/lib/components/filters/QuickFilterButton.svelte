@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { overflowItem } from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
 	import { Button } from "#lib/components/ui/button/index.ts";
 
@@ -18,7 +19,7 @@
 	const overflow = overflowItem((element) => [
 		{
 			label: label ?? element.textContent?.trim() ?? "",
-			detail: active && label === undefined ? "On" : undefined,
+			detail: active && label === undefined ? t("filters.on") : undefined,
 			onselect: onclick,
 		},
 	]);

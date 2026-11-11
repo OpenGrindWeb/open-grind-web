@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import MapPinIcon from "phosphor-svelte/lib/MapPinIcon";
 
 	import { showErrorToast } from "#lib/api/error-toast.ts";
@@ -37,7 +38,7 @@
 
 	// In a bar too narrow for it, this moves into the "…" menu.
 	const overflow = overflowItem(() => [
-		{ label: "Change location", onselect: openPicker },
+		{ label: t("filters.changeLocation"), onselect: openPicker },
 	]);
 
 	const autoUpdateLocation = $derived(
@@ -52,7 +53,7 @@
 			"relative w-11 overflow-clip transition-none *:absolute *:top-1/2 *:left-1/2 *:flex *:-translate-1/2 *:items-center *:justify-center *:gap-1.5",
 			className,
 		]}
-		aria-label="Change location"
+		aria-label={t("filters.changeLocation")}
 		onclick={openPicker}
 	>
 		<MapPinIcon weight="fill" />

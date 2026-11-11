@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import SlidersHorizontalIcon from "phosphor-svelte/lib/SlidersHorizontalIcon";
 
 	import { genderFilterFlag } from "#lib/api/feature-flags-state.svelte.ts";
@@ -18,16 +19,16 @@
 
 	const TOGGLE_FILTER_KEYS = ["isOnline", "isRightNow", "isFresh"] as const;
 	const TOGGLE_LABELS = {
-		isOnline: "Online",
-		isRightNow: "Right now",
-		isFresh: "Fresh",
+		isOnline: "filters.online",
+		isRightNow: "filters.rightNow",
+		isFresh: "filters.fresh",
 	} as const;
 
 	// In a bar too narrow for it, the toggle group moves into the "…" menu
 	// as one checkable line per toggle.
 	const toggleOverflow = overflowItem(() =>
 		TOGGLE_FILTER_KEYS.map((key) => ({
-			label: TOGGLE_LABELS[key],
+			label: t(TOGGLE_LABELS[key]),
 			checked: filters[key],
 			onselect: () => {
 				const next = {
@@ -53,19 +54,19 @@
 
 <QuickFilterButton
 	active={sheetOnlyFiltersSent}
-	label="All filters"
+	label={t("filters.allFilters")}
 	onclick={() => (openFilters.all = true)}
 >
 	<SlidersHorizontalIcon />
 </QuickFilterButton>
 <QuickFilterButton active={ageEnabled} onclick={() => (openFilters.age = true)}>
-	Age
+	{t("filters.age")}
 </QuickFilterButton>
 <QuickFilterButton
 	active={positionEnabled}
 	onclick={() => (openFilters.position = true)}
 >
-	Position
+	{t("filters.position")}
 </QuickFilterButton>
 <ToggleGroup.Root
 	type="multiple"
@@ -88,19 +89,19 @@
 		value="isOnline"
 		class={buttonVariants({ variant: "secondary" })}
 	>
-		Online
+		{t("filters.online")}
 	</ToggleGroup.Item>
 	<ToggleGroup.Item
 		value="isRightNow"
 		class={buttonVariants({ variant: "secondary" })}
 	>
-		Right now
+		{t("filters.rightNow")}
 	</ToggleGroup.Item>
 	<ToggleGroup.Item
 		value="isFresh"
 		class={buttonVariants({ variant: "secondary" })}
 	>
-		Fresh
+		{t("filters.fresh")}
 	</ToggleGroup.Item>
 </ToggleGroup.Root>
 

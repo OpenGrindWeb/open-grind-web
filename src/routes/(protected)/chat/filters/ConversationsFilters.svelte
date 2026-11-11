@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import StarIcon from "phosphor-svelte/lib/StarIcon";
 
 	import OverflowMenu from "#lib/components/filters/overflow/OverflowMenu.svelte";
@@ -29,9 +30,9 @@
 	} = $props();
 
 	const LABELLED_TOGGLES = [
-		{ key: "unread", label: "Unread" },
-		{ key: "online", label: "Online" },
-		{ key: "rightNow", label: "Right now" },
+		{ key: "unread", label: "filters.unread" },
+		{ key: "online", label: "filters.online" },
+		{ key: "rightNow", label: "filters.rightNow" },
 	] as const;
 
 	const values = $derived(filters.value);
@@ -42,14 +43,14 @@
 	const bar = provideOverflowBar();
 	const favoritesOverflow = overflowItem(() => [
 		{
-			label: "Favorites only",
+			label: t("filters.favoritesOnly"),
 			checked: values.favorites,
 			onselect: () => onchange({ favorites: !values.favorites }),
 		},
 	]);
 	const togglesOverflow = overflowItem(() =>
 		LABELLED_TOGGLES.map(({ key, label }) => ({
-			label,
+			label: t(label),
 			checked: values[key],
 			onselect: () =>
 				onchange({ [key]: !values[key] } as Partial<ConversationFilterValues>),
@@ -86,7 +87,7 @@
 		>
 			<ToggleGroup.Item
 				value="favorites"
-				aria-label="Favorites only"
+				aria-label={t("filters.favoritesOnly")}
 				class={buttonVariants({ variant: "secondary" })}
 			>
 				<StarIcon weight={values.favorites ? "fill" : "bold"} />
@@ -116,7 +117,7 @@
 					value={key}
 					class={buttonVariants({ variant: "secondary" })}
 				>
-					{label}
+					{t(label)}
 				</ToggleGroup.Item>
 			{/each}
 		</ToggleGroup.Root>
@@ -124,13 +125,13 @@
 			active={values.distanceMetres !== null}
 			onclick={() => (open.distance = true)}
 		>
-			Distance
+			{t("filters.distance")}
 		</QuickFilterButton>
 		<QuickFilterButton
 			active={values.positions.length > 0}
 			onclick={() => (open.position = true)}
 		>
-			Position
+			{t("filters.position")}
 		</QuickFilterButton>
 		<OverflowMenu {bar} />
 	</div>

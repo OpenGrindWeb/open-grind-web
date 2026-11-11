@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { page } from "$app/state";
 	import BellIcon from "phosphor-svelte/lib/BellIcon";
 	import BellSimpleSlashIcon from "phosphor-svelte/lib/BellSimpleSlashIcon";
@@ -119,20 +120,20 @@
 				{#if draft !== ""}
 					<span
 						data-slot="conversation-draft-prefix"
-						class="font-bold text-primary">Draft:&nbsp;</span
+						class="font-bold text-primary">{t("inbox.draft")}&nbsp;</span
 					>{draft}
 				{:else if previewText !== null}
 					{#if previewIsOurs}
 						<span
 							data-slot="conversation-preview-ours"
-							class="font-normal text-muted-foreground">You:&nbsp;</span
+							class="font-normal text-muted-foreground">{t("inbox.you")}&nbsp;</span
 						>
 					{/if}{previewText}
 				{:else}
 					<span
 						class="font-normal tracking-tight text-muted-foreground italic"
 					>
-						Preview not available
+						{t("inbox.previewUnavailable")}
 					</span>
 				{/if}
 			</Item.Description>
@@ -194,19 +195,19 @@
 				<ContextMenu.Item onSelect={togglePinned}>
 					{#if conversation.data.pinned}
 						<PushPinSlashIcon weight="fill" class="size-5" />
-						Unpin
+						{t("inbox.unpin")}
 					{:else}
 						<PushPinIcon weight="fill" class="size-5" />
-						Pin
+						{t("inbox.pin")}
 					{/if}
 				</ContextMenu.Item>
 				<ContextMenu.Item onSelect={toggleMuted}>
 					{#if conversation.data.muted}
 						<BellIcon weight="fill" class="size-5" />
-						Unmute
+						{t("inbox.unmute")}
 					{:else}
 						<BellSimpleSlashIcon weight="fill" class="size-5" />
-						Mute
+						{t("inbox.mute")}
 					{/if}
 				</ContextMenu.Item>
 				<ContextMenu.Separator />
@@ -215,7 +216,7 @@
 					onSelect={onRequestDelete}
 				>
 					<TrashIcon class="size-5" />
-					Delete
+					{t("inbox.delete")}
 				</ContextMenu.Item>
 			</ContextMenu.Content>
 		{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onDestroy } from "svelte";
@@ -84,8 +85,8 @@
 			style:--routed-tab={routedTab}
 			style:--last-tab={INTEREST_TABS.length - 1}
 		></span>
-		{#each INTEREST_TABS as { href, label } (href)}
-			{@render tab(href, label)}
+		{#each INTEREST_TABS as { href, key } (href)}
+			{@render tab(href, t(key))}
 		{/each}
 	</ProgressiveBlur>
 	<InterestPager

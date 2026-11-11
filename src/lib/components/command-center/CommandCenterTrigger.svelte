@@ -1,4 +1,5 @@
 <script>
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import TerminalIcon from "phosphor-svelte/lib/TerminalIcon";
 
 	import { overflowItem } from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
@@ -14,7 +15,7 @@
 	// In a bar too narrow for it, this moves into the "…" menu.
 	const overflow = overflowItem(() => [
 		{
-			label: "Command center",
+			label: t("filters.commandCenter"),
 			onselect: () => (commandCenterState.open = true),
 		},
 	]);

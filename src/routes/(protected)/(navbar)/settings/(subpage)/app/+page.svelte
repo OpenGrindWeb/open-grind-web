@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import ArrowSquareOutIcon from "phosphor-svelte/lib/ArrowSquareOutIcon";
 	import CaretRightIcon from "phosphor-svelte/lib/CaretRightIcon";
 	import { toast } from "svelte-sonner";
@@ -17,6 +18,7 @@
 	import AppsMenuEntrySetting from "./AppsMenuEntrySetting.svelte";
 	import AutomaticUpdatesSetting from "./AutomaticUpdatesSetting.svelte";
 	import BackdropBlurSetting from "./BackdropBlurSetting.svelte";
+	import LanguageSetting from "./LanguageSetting.svelte";
 	import PreferenceSwitchSetting from "./PreferenceSwitchSetting.svelte";
 	import UnitsSetting from "./UnitsSetting.svelte";
 </script>
@@ -61,7 +63,8 @@
 		{/snippet}
 	</Item.Root>
 {/snippet}
-<h2>Display</h2>
+<h2>{t("settings.display")}</h2>
+<LanguageSetting />
 <UnitsSetting />
 <BackdropBlurSetting />
 {#if hapticsAvailable()}

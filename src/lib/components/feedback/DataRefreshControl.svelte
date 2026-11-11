@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "#lib/i18n/index.svelte.ts";
 	import { untrack } from "svelte";
 	import { cubicOut, expoOut } from "svelte/easing";
 	import { prefersReducedMotion, Tween } from "svelte/motion";
@@ -404,6 +405,6 @@
 		style="--height: {BUTTON_HEIGHT_PX}px;"
 		onclick={() => model.clickTrigger()}
 	>
-		Refresh
+		{t("refresh.button")}
 	</Button>
 {/snippet}

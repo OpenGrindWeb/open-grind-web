@@ -1,3 +1,5 @@
+import { t } from "#lib/i18n/index.svelte.ts";
+import type { MessageKey } from "#lib/i18n/messages/en.ts";
 import type {
 	ApiResponseMessage,
 	QuotedMessage,
@@ -75,18 +77,19 @@ export function previewFromMessage(
 
 const EXPIRING_VIDEO_TYPES = new Set(["Video", "PrivateVideo"]);
 
-const PREVIEW_LABELS: Record<string, string> = {
-	Gaymoji: "Gaymoji",
-	Giphy: "GIF",
-	Location: "Location",
-	ProfilePhotoReply: "Replied to a photo",
+const PREVIEW_LABELS: Record<string, MessageKey> = {
+	Gaymoji: "preview.gaymoji",
+	Giphy: "preview.gif",
+	Location: "preview.location",
+	ProfilePhotoReply: "preview.repliedToPhoto",
 };
 
 export function previewLabel(
 	preview: MessagePreview | null | undefined,
 ): string | null {
 	if (preview === null || preview === undefined) return null;
-	if (preview.type === "AlbumContentReaction") return "Reacted to an album";
+	if (preview.type === "AlbumContentReaction")
+		return t("preview.reactedToAlbum");
 	const text =
 		preview.text ??
 		preview.albumContentReply ??
@@ -94,12 +97,13 @@ export function previewLabel(
 		null;
 	if (text !== null) return text;
 	const label = PREVIEW_LABELS[preview.type];
-	if (label !== undefined) return label;
-	if ((preview.albumId ?? null) !== null) return "Album";
-	if (preview.type === "ExpiringImage") return "Expiring image";
-	if (EXPIRING_VIDEO_TYPES.has(preview.type)) return "Expiring video";
+	if (label !== undefined) return t(label);
+	if ((preview.albumId ?? null) !== null) return t("preview.album");
+	if (preview.type === "ExpiringImage") return t("preview.expiringImage");
+	if (EXPIRING_VIDEO_TYPES.has(preview.type))
+		return t("preview.expiringVideo");
 	if ((preview.imageHash ?? null) !== null || preview.type === "Image") {
-		return "Photo";
+		return t("preview.photo");
 	}
 	return null;
 }
