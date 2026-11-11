@@ -305,16 +305,33 @@
 		if (flag !== null) write(flag !== "off");
 		let enabled = read();
 
-		addEventListener(
+		const toggle = () => {
+			enabled = !enabled;
+			write(enabled);
+			if (enabled) show();
+			else document.getElementById("og-debug-box")?.remove();
+		};
+		// Three fingers at once, or four quick taps on the status bar area.
+		// Capture phase on the document, so the app's own gesture handling
+		// can't swallow it.
+		let taps = [];
+		document.addEventListener(
 			"touchstart",
 			(event) => {
-				if (event.touches.length !== 3) return;
-				enabled = !enabled;
-				write(enabled);
-				if (enabled) show();
-				else document.getElementById("og-debug-box")?.remove();
+				if (event.touches.length === 3) {
+					taps = [];
+					toggle();
+					return;
+				}
+				if (event.touches.length !== 1 || event.touches[0].clientY > 50) return;
+				const now = Date.now();
+				taps = taps.filter((t) => now - t < 1500).concat(now);
+				if (taps.length >= 4) {
+					taps = [];
+					toggle();
+				}
 			},
-			{ passive: true },
+			{ passive: true, capture: true },
 		);
 
 		const show = () => {
