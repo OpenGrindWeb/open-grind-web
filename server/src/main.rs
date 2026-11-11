@@ -13,6 +13,7 @@ mod error;
 mod events;
 mod gate;
 mod ipc;
+mod media;
 mod spa;
 mod store;
 
@@ -23,6 +24,7 @@ use std::sync::Arc;
 use axum::http::{header, HeaderValue};
 use axum::routing::{get, post, MethodRouter};
 use axum::Router;
+use tower_http::compression::predicate::{DefaultPredicate, NotForContentType, Predicate};
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
@@ -116,9 +118,14 @@ pub fn router(state: AppState, static_dir: PathBuf) -> Router {
 		.route("/gate/logout", post(gate::logout))
 		.route("/ipc/{command}", post(ipc::handler))
 		.route("/events", get(events::handler))
+		.route("/media/{scheme}/{path}", get(media::handler))
 		.fallback_service(assets)
 		.layer(axum::middleware::from_fn_with_state(state.clone(), gate::require_session))
-		.layer(CompressionLayer::new())
+		// Images are already skipped by the default predicate; video must be
+		// too, or range requests would get a compressed body.
+		.layer(CompressionLayer::new().compress_when(
+			DefaultPredicate::new().and(NotForContentType::const_new("video/")),
+		))
 		.layer(SetResponseHeaderLayer::overriding(
 			header::X_FRAME_OPTIONS,
 			HeaderValue::from_static("DENY"),
