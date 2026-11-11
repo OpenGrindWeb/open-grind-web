@@ -4,6 +4,7 @@
 	import { genderFilterFlag } from "#lib/api/feature-flags-state.svelte.ts";
 	import AgeQuickFilter from "#lib/components/filters/age/AgeQuickFilter.svelte";
 	import PositionQuickFilter from "#lib/components/filters/position/PositionQuickFilter.svelte";
+	import { overflowItem } from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
 	import QuickFilterButton from "#lib/components/filters/QuickFilterButton.svelte";
 	import { buttonVariants } from "#lib/components/ui/button/index.ts";
 	import * as ToggleGroup from "#lib/components/ui/toggle-group/index.ts";
@@ -16,6 +17,29 @@
 		$props();
 
 	const TOGGLE_FILTER_KEYS = ["isOnline", "isRightNow", "isFresh"] as const;
+	const TOGGLE_LABELS = {
+		isOnline: "Online",
+		isRightNow: "Right now",
+		isFresh: "Fresh",
+	} as const;
+
+	// In a bar too narrow for it, the toggle group moves into the "…" menu
+	// as one checkable line per toggle.
+	const toggleOverflow = overflowItem(() =>
+		TOGGLE_FILTER_KEYS.map((key) => ({
+			label: TOGGLE_LABELS[key],
+			checked: filters[key],
+			onselect: () => {
+				const next = {
+					isOnline: filters.isOnline,
+					isRightNow: filters.isRightNow,
+					isFresh: filters.isFresh,
+				};
+				next[key] = !next[key];
+				gridState.filters.set(next);
+			},
+		})),
+	);
 
 	const filters = $derived(gridState.filters.current);
 	const { ageEnabled, positionEnabled } = $derived(filters);
@@ -58,6 +82,7 @@
 	}
 	size="sm"
 	class="h-9"
+	{@attach toggleOverflow}
 >
 	<ToggleGroup.Item
 		value="isOnline"

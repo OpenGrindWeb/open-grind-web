@@ -1,6 +1,11 @@
 <script lang="ts">
 	import StarIcon from "phosphor-svelte/lib/StarIcon";
 
+	import OverflowMenu from "#lib/components/filters/overflow/OverflowMenu.svelte";
+	import {
+		overflowItem,
+		provideOverflowBar,
+	} from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
 	import QuickFilterButton from "#lib/components/filters/QuickFilterButton.svelte";
 	import ProgressiveBlur from "#lib/components/shared/ProgressiveBlur.svelte";
 	import { buttonVariants } from "#lib/components/ui/button/index.ts";
@@ -32,6 +37,24 @@
 	const values = $derived(filters.value);
 
 	let open = $state({ distance: false, position: false });
+
+	// Filters that don't fit move into a "…" menu instead of scrolling.
+	const bar = provideOverflowBar();
+	const favoritesOverflow = overflowItem(() => [
+		{
+			label: "Favorites only",
+			checked: values.favorites,
+			onselect: () => onchange({ favorites: !values.favorites }),
+		},
+	]);
+	const togglesOverflow = overflowItem(() =>
+		LABELLED_TOGGLES.map(({ key, label }) => ({
+			label,
+			checked: values[key],
+			onselect: () =>
+				onchange({ [key]: !values[key] } as Partial<ConversationFilterValues>),
+		})),
+	);
 </script>
 
 <ProgressiveBlur
@@ -39,17 +62,22 @@
 	data-fixed-header
 	class="absolute inset-x-0 top-0 z-10"
 	bgClass="bg-linear-to-b from-background to-transparent"
-	contentClass="scrollbar-thin flex gap-0.5 overflow-x-auto px-4 pt-4 pb-2"
-	contentScrollIntent="x"
+	contentClass="pt-3"
 	{inert}
 	{@attach !inert && topChrome}
 >
-	<div class="contents" inert={locked}>
+	<div
+		data-slot="quick-filters-row"
+		class="flex items-center gap-1.5 overflow-hidden px-3 pb-2"
+		inert={locked}
+		{@attach bar.row}
+	>
 		<ToggleGroup.Root
 			type="multiple"
 			variant="default"
 			size="sm"
 			class="h-9"
+			{@attach favoritesOverflow}
 			bind:value={
 				() => (values.favorites ? ["favorites"] : []),
 				(active: string[]) =>
@@ -69,6 +97,7 @@
 			variant="default"
 			size="sm"
 			class="h-9"
+			{@attach togglesOverflow}
 			bind:value={
 				() =>
 					LABELLED_TOGGLES.filter(({ key }) => values[key]).map(
@@ -103,6 +132,7 @@
 		>
 			Position
 		</QuickFilterButton>
+		<OverflowMenu {bar} />
 	</div>
 </ProgressiveBlur>
 

@@ -6,6 +6,7 @@
 		preferencesSnapshot,
 		setPreferences,
 	} from "#lib/app-data/preferences.svelte.ts";
+	import { overflowItem } from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
 	import LocationChooser from "#lib/components/location-chooser/LocationChooser.svelte";
 	import { Button } from "#lib/components/ui/button/index.ts";
 	import { decodeGeohash } from "#lib/model/geohash.ts";
@@ -34,12 +35,17 @@
 		geoMapPickerOpen = true;
 	}
 
+	// In a bar too narrow for it, this moves into the "…" menu.
+	const overflow = overflowItem(() => [
+		{ label: "Change location", onselect: openPicker },
+	]);
+
 	const autoUpdateLocation = $derived(
 		preferencesSnapshot().autoUpdateLocation,
 	);
 </script>
 
-<div class="relative flex shrink-0">
+<div class="relative flex shrink-0" {@attach overflow}>
 	<Button
 		variant="secondary"
 		class={[

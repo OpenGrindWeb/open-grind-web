@@ -267,8 +267,25 @@
 		restingButton.shown &&
 		!model.gestureActive &&
 		distance >= AT_BOUNDARY_PX;
+	// With a mouse, reaching the top refreshes on its own instead of
+	// offering the Refresh button: once per visit to the boundary.
+	const finePointer =
+		typeof matchMedia === "function"
+			? matchMedia("(hover: hover) and (pointer: fine)")
+			: null;
+	let autoRefreshedAtBoundary = false;
 	$effect(() => {
-		if (shouldRevealRestingButton()) restingButton.shown = true;
+		if (distance >= AT_BOUNDARY_PX) autoRefreshedAtBoundary = false;
+	});
+	$effect(() => {
+		if (!shouldRevealRestingButton()) return;
+		if (finePointer?.matches && position === "top") {
+			if (autoRefreshedAtBoundary) return;
+			autoRefreshedAtBoundary = true;
+			untrack(() => model.clickTrigger());
+			return;
+		}
+		restingButton.shown = true;
 	});
 
 	$effect(() => () => restingButton.destroy());

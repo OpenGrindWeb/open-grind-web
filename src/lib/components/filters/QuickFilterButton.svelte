@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { overflowItem } from "#lib/components/filters/overflow/overflow-bar.svelte.ts";
 	import { Button } from "#lib/components/ui/button/index.ts";
 
 	let {
@@ -12,6 +13,15 @@
 		onclick: () => void;
 		children: import("svelte").Snippet;
 	} = $props();
+
+	// In a bar too narrow for it, this button moves into the "…" menu.
+	const overflow = overflowItem((element) => [
+		{
+			label: label ?? element.textContent?.trim() ?? "",
+			detail: active && label === undefined ? "On" : undefined,
+			onselect: onclick,
+		},
+	]);
 </script>
 
 <Button
@@ -20,6 +30,7 @@
 	data-active={active || undefined}
 	{onclick}
 	class={{ "bg-white text-popover hover:bg-neutral-200": active }}
+	{@attach overflow}
 >
 	{@render children()}
 </Button>
