@@ -93,6 +93,10 @@ async fn dispatch(app: &AppState, command: &str, args: serde_json::Value) -> Opt
 			Ok(a) => upload::upload_media(app, a).await.and_then(to_json),
 			Err(e) => Err(e),
 		},
+		"stage_proxied_photo" => match parse(args) {
+			Ok(a) => upload::stage_proxied_photo(app, a).await.and_then(to_json),
+			Err(e) => Err(e),
+		},
 		// Staged copies expire on their own; nothing to discard eagerly.
 		"discard_staged_media" => to_json(()),
 		// Grindr websocket (ws.rs)

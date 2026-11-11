@@ -60,6 +60,15 @@ pub fn inject(html: &str) -> String {
 }
 
 pub async fn theme() -> Response {
+	// Development only: OG_DEV_THEME=<path> re-reads the stylesheet on every
+	// request so it can be tuned without rebuilding.
+	if let Some(css) = std::env::var_os("OG_DEV_THEME").and_then(|path| std::fs::read_to_string(path).ok()) {
+		return (
+			[(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8"))],
+			css,
+		)
+			.into_response();
+	}
 	(
 		[
 			(header::CONTENT_TYPE, HeaderValue::from_static("text/css; charset=utf-8")),

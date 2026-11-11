@@ -166,12 +166,12 @@ pub enum PickedFile {
 impl PickedFile {
 	fn resolve(&self, staging: &Staging) -> Result<PathBuf, AppError> {
 		let path = match self {
-			PickedFile::Desktop { path } => path.as_str(),
-			// Drag-and-drop/share staging doesn't exist on the web build.
-			PickedFile::Staged { .. } => "",
+			PickedFile::Desktop { path } => path.clone(),
+			// `stage_proxied_photo` hands out the staged file name as its id.
+			PickedFile::Staged { id } => format!("{STAGED_PREFIX}{id}"),
 		};
 		staging
-			.resolve(path)
+			.resolve(&path)
 			.ok_or_else(|| AppError::Media("That file is no longer available, pick it again".to_owned()))
 	}
 }
@@ -553,11 +553,23 @@ pub struct UploadMediaArgs {
 	path: String,
 	signed: bool,
 	file: PickedFile,
+	/// Upstream PR 523 replaced `squareThumb: true` with `crop`; both are
+	/// accepted.
+	#[serde(default)]
+	crop: Option<PhotoCrop>,
 	#[serde(default)]
 	square_thumb: Option<bool>,
 }
 
-fn with_square_thumb(path: &str, jpeg: &[u8]) -> Result<String, AppError> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PhotoCrop {
+	ThumbCoords,
+	CropAndThumb,
+}
+
+/// Port of `with_crop` (upload/bytes.rs, upstream PR 523).
+fn with_crop(path: &str, jpeg: &[u8], crop: PhotoCrop) -> Result<String, AppError> {
 	use image::{ImageFormat, ImageReader};
 	let (width, height) = ImageReader::with_format(Cursor::new(jpeg), ImageFormat::Jpeg)
 		.into_dimensions()
@@ -565,8 +577,62 @@ fn with_square_thumb(path: &str, jpeg: &[u8]) -> Result<String, AppError> {
 	let side = width.min(height);
 	let left = (width - side) / 2;
 	let top = (height - side) / 2;
+	let (right, bottom) = (left + side, top + side);
+	let query = match crop {
+		PhotoCrop::ThumbCoords => format!("thumbCoords={bottom},{left},{right},{top}"),
+		PhotoCrop::CropAndThumb => format!(
+			"crop_top=0&crop_bottom={height}&crop_left=0&crop_right={width}&img_1_top={top}&img_1_bottom={bottom}&img_1_left={left}&img_1_right={right}&rotate=0&flip_vertical=false"
+		),
+	};
 	let separator = if path.contains('?') { '&' } else { '?' };
-	Ok(format!("{path}{separator}thumbCoords={},{left},{},{top}", top + side, left + side))
+	Ok(format!("{path}{separator}{query}"))
+}
+
+#[cfg(test)]
+fn with_square_thumb(path: &str, jpeg: &[u8]) -> Result<String, AppError> {
+	with_crop(path, jpeg, PhotoCrop::ThumbCoords)
+}
+
+// --- stage_proxied_photo (upload/staged.rs, upstream PR 523) -------------------
+
+const UNREADABLE_PHOTO: &str = "That photo couldn't be loaded";
+
+#[derive(Deserialize)]
+pub struct StageProxiedPhotoArgs {
+	url: String,
+}
+
+/// Fetches a photo already on Grindr's CDN (an earlier chat upload) and
+/// stages it so it can be uploaded again; returns the staged id.
+pub async fn stage_proxied_photo(app: &AppState, args: StageProxiedPhotoArgs) -> Result<String, AppError> {
+	let unreadable = || AppError::Media(UNREADABLE_PHOTO.to_owned());
+	if !args.url.starts_with("https://") {
+		return Err(unreadable());
+	}
+	let client = app.client()?;
+	let media = client
+		.fetch_media(grindr::MediaRequest {
+			url: &args.url,
+			range: None,
+			max_bytes: MAX_PHOTO_BYTES as usize,
+			fetcher: grindr::MediaFetcher::ImageLoader,
+		})
+		.await
+		.map_err(|_| unreadable())?;
+	if !(200..300).contains(&media.status) {
+		return Err(unreadable());
+	}
+	let ext = match source::sniff(&media.body) {
+		Some(source::Format::Jpeg) => "jpg",
+		Some(source::Format::Png) => "png",
+		Some(source::Format::Webp) => "webp",
+		_ => return Err(unreadable()),
+	};
+	let id = format!("{}.{ext}", uuid::Uuid::new_v4().hyphenated());
+	tokio::fs::write(app.staging.dir.join(&id), &media.body)
+		.await
+		.map_err(media_error)?;
+	Ok(id)
 }
 
 pub async fn upload_media(app: &AppState, args: UploadMediaArgs) -> Result<String, AppError> {
@@ -580,10 +646,12 @@ pub async fn upload_media(app: &AppState, args: UploadMediaArgs) -> Result<Strin
 		return Err(AppError::Media(NOT_A_PHOTO.to_owned()));
 	};
 	let photo = photo::normalize(bytes, photo::JPEG.to_owned()).await?;
-	let path = if args.square_thumb.unwrap_or(false) {
-		with_square_thumb(&args.path, &photo.bytes)?
-	} else {
-		args.path
+	let crop = args
+		.crop
+		.or(args.square_thumb.unwrap_or(false).then_some(PhotoCrop::ThumbCoords));
+	let path = match crop {
+		Some(crop) => with_crop(&args.path, &photo.bytes, crop)?,
+		None => args.path,
 	};
 	if !signed_in_as(&sessions.borrow(), &profile_id) {
 		return Err(AppError::SessionCleared);
@@ -648,6 +716,33 @@ mod tests {
 			with_square_thumb("/v4/media/upload?takenOnGrindr=false", &jpeg).unwrap(),
 			"/v4/media/upload?takenOnGrindr=false&thumbCoords=896,0,768,128"
 		);
+	}
+
+	#[test]
+	fn crop_and_thumb_matches_upstream() {
+		let mut jpeg = Vec::new();
+		image::DynamicImage::new_rgb8(768, 1024)
+			.write_to(&mut Cursor::new(&mut jpeg), image::ImageFormat::Jpeg)
+			.unwrap();
+		assert_eq!(
+			with_crop("/v2/media/upload", &jpeg, PhotoCrop::CropAndThumb).unwrap(),
+			"/v2/media/upload?crop_top=0&crop_bottom=1024&crop_left=0&crop_right=768&img_1_top=128&img_1_bottom=896&img_1_left=0&img_1_right=768&rotate=0&flip_vertical=false"
+		);
+		let args: UploadMediaArgs = serde_json::from_value(serde_json::json!({
+			"path": "/p", "signed": false, "file": {"source": "staged", "id": "x"}, "crop": "cropAndThumb"
+		}))
+		.unwrap();
+		assert_eq!(args.crop, Some(PhotoCrop::CropAndThumb));
+	}
+
+	#[test]
+	fn a_staged_id_resolves_like_its_path() {
+		let (staging, dir) = staging();
+		let id = "0f8c2a4e-1b2c-4d5e-8f90-123456789abc.jpg";
+		let picked = PickedFile::Staged { id: id.to_owned() };
+		assert_eq!(picked.resolve(&staging).unwrap(), staging.dir.join(id));
+		assert!(PickedFile::Staged { id: "../x.jpg".to_owned() }.resolve(&staging).is_err());
+		let _ = std::fs::remove_dir_all(dir);
 	}
 
 	#[tokio::test]
